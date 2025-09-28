@@ -9,7 +9,8 @@ on:
 env:
   DOTNET_VERSION: '8.0.x'
   PROJECT_PATH: 'src/ZLoggerExtensions/ZLoggerExtensions.csproj'
-  TEST_PROJECT_PATH: 'ZLoggerExtensions.Tests/ZLoggerExtensions.Tests.csproj'
+  TEST_PROJECT_PATH: 'src/ZLoggerExtensions.Tests/ZLoggerExtensions.Tests.csproj'
+  SOLUTION_PATH: 'src/ZLoggerExtensions.sln'
 
 jobs:
   version:
@@ -18,10 +19,20 @@ jobs:
       version: ${{ steps.semver.outputs.version }}
       tag: ${{ steps.semver.outputs.tag }}
       should_publish: ${{ steps.should_publish.outputs.result }}
+      is_pull_request: ${{ steps.pr_check.outputs.result }}
     steps:
     - uses: actions/checkout@v4
       with:
         fetch-depth: 0
+
+    - name: Check if pull request
+      id: pr_check
+      run: |
+        if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+          echo "result=true" >> $GITHUB_OUTPUT
+        else
+          echo "result=false" >> $GITHUB_OUTPUT
+        fi
 
     - name: Generate version
       id: semver
@@ -36,19 +47,26 @@ jobs:
       run: |
         if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" == "push" ]]; then
           echo "result=true" >> $GITHUB_OUTPUT
+          echo "✅ Will publish to NuGet (main branch push)"
         else
           echo "result=false" >> $GITHUB_OUTPUT
+          echo "ℹ️ Will not publish to NuGet (not main branch push)"
         fi
 
     - name: Show version info
       run: |
+        echo "Event: ${{ github.event_name }}"
+        echo "Branch: ${{ github.ref }}"
         echo "Version: ${{ steps.semver.outputs.version }}"
         echo "Tag: ${{ steps.semver.outputs.tag }}"
+        echo "Is PR: ${{ steps.pr_check.outputs.result }}"
         echo "Should publish: ${{ steps.should_publish.outputs.result }}"
 
   build-and-test:
     needs: version
     runs-on: ubuntu-latest
+    outputs:
+      tests_passed: ${{ steps.test_results.outputs.passed }}
     steps:
     - uses: actions/checkout@v4
 
@@ -58,47 +76,97 @@ jobs:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
 
     - name: Build
       run: |
-        dotnet build --no-restore --configuration Release \
+        dotnet build ${{ env.SOLUTION_PATH }} --no-restore --configuration Release \
           -p:Version=${{ needs.version.outputs.version }} \
           -p:AssemblyVersion=${{ needs.version.outputs.version }} \
           -p:FileVersion=${{ needs.version.outputs.version }} \
           -p:PackageVersion=${{ needs.version.outputs.version }}
 
     - name: Test
-      run: dotnet test --no-build --configuration Release --verbosity normal
+      id: test_step
+      run: |
+        dotnet test ${{ env.TEST_PROJECT_PATH }} \
+          --no-build \
+          --configuration Release \
+          --verbosity normal \
+          --logger trx \
+          --results-directory ./test-results \
+          --collect:"XPlat Code Coverage"
+
+    - name: Check test results
+      id: test_results
+      run: |
+        if [ $? -eq 0 ]; then
+          echo "All tests passed ✅"
+          echo "passed=true" >> $GITHUB_OUTPUT
+        else
+          echo "Tests failed ❌"
+          echo "passed=false" >> $GITHUB_OUTPUT
+          exit 1
+        fi
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: ./test-results/
+        retention-days: 7
 
     - name: Pack NuGet package
-      if: needs.version.outputs.should_publish == 'true'
+      if: needs.version.outputs.should_publish == 'true' && steps.test_results.outputs.passed == 'true'
       run: |
         dotnet pack ${{ env.PROJECT_PATH }} \
           --no-build \
           --configuration Release \
           --output ./artifacts \
           -p:PackageVersion=${{ needs.version.outputs.version }} \
-          -p:Version=${{ needs.version.outputs.version }}
+          -p:Version=${{ needs.version.outputs.version }} \
+          -p:IncludeSymbols=true \
+          -p:SymbolPackageFormat=snupkg
 
     - name: Upload NuGet package
-      if: needs.version.outputs.should_publish == 'true'
+      if: needs.version.outputs.should_publish == 'true' && steps.test_results.outputs.passed == 'true'
       uses: actions/upload-artifact@v4
       with:
         name: nuget-package
         path: ./artifacts/*.nupkg
         retention-days: 7
 
+    - name: Upload symbol package
+      if: needs.version.outputs.should_publish == 'true' && steps.test_results.outputs.passed == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-symbols
+        path: ./artifacts/*.snupkg
+        retention-days: 7
+
   publish:
     needs: [version, build-and-test]
     runs-on: ubuntu-latest
-    if: needs.version.outputs.should_publish == 'true'
+    if: needs.version.outputs.should_publish == 'true' && needs.build-and-test.outputs.tests_passed == 'true'
     environment: production
     steps:
+    - name: Verify tests passed
+      run: |
+        echo "✅ All tests passed - proceeding with NuGet publication"
+        echo "Version: ${{ needs.version.outputs.version }}"
+        echo "Tag: ${{ needs.version.outputs.tag }}"
+
     - name: Download NuGet package
       uses: actions/download-artifact@v4
       with:
         name: nuget-package
+        path: ./artifacts
+
+    - name: Download symbol package
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-symbols
         path: ./artifacts
 
     - name: Setup .NET
@@ -106,30 +174,54 @@ jobs:
       with:
         dotnet-version: ${{ env.DOTNET_VERSION }}
 
+    - name: Validate NuGet API Key
+      run: |
+        if [ -z "${{ secrets.NUGET_API_KEY }}" ]; then
+          echo "❌ NUGET_API_KEY secret is not set"
+          exit 1
+        else
+          echo "✅ NUGET_API_KEY is configured"
+        fi
+
     - name: Publish to NuGet
       run: |
+        echo "Publishing NuGet package..."
         dotnet nuget push ./artifacts/*.nupkg \
+          --api-key ${{ secrets.NUGET_API_KEY }} \
+          --source https://api.nuget.org/v3/index.json \
+          --skip-duplicate \
+          --no-symbols
+        
+        echo "Publishing symbol package..."
+        dotnet nuget push ./artifacts/*.snupkg \
           --api-key ${{ secrets.NUGET_API_KEY }} \
           --source https://api.nuget.org/v3/index.json \
           --skip-duplicate
 
     - name: Create GitHub Release
-      uses: actions/create-release@v1
+      uses: softprops/action-gh-release@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ needs.version.outputs.tag }}
-        release_name: Release ${{ needs.version.outputs.version }}
+        name: Release ${{ needs.version.outputs.version }}
         body: |
           ## Release ${{ needs.version.outputs.version }}
 
           ### Changes
           - Automated release from CI/CD pipeline
+          - All tests passed ✅
 
           ### NuGet Package
-          - Package: Deneblab.ZLoggerExtensions
-          - Version: ${{ needs.version.outputs.version }}
-          - Published to: https://www.nuget.org/packages/Deneblab.ZLoggerExtensions/
+          - **Package**: `Deneblab.ZLoggerExtensions`
+          - **Version**: `${{ needs.version.outputs.version }}`
+          - **Published to**: https://www.nuget.org/packages/Deneblab.ZLoggerExtensions/
+
+          ### Installation
+          ```bash
+          dotnet add package Deneblab.ZLoggerExtensions --version ${{ needs.version.outputs.version }}
+          ```
 
         draft: false
         prerelease: false
+        files: ./artifacts/*.*nupkg
