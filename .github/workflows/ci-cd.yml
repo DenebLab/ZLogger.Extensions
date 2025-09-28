@@ -1,0 +1,135 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  PROJECT_PATH: 'src/ZLoggerExtensions/ZLoggerExtensions.csproj'
+  TEST_PROJECT_PATH: 'ZLoggerExtensions.Tests/ZLoggerExtensions.Tests.csproj'
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.semver.outputs.version }}
+      tag: ${{ steps.semver.outputs.tag }}
+      should_publish: ${{ steps.should_publish.outputs.result }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Generate version
+      id: semver
+      uses: ./.github/actions/semver-js
+      with:
+        config_file: '.abcversion.json'
+        mode: 'config-change'
+        tag_prefix: 'v'
+
+    - name: Should publish to NuGet
+      id: should_publish
+      run: |
+        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" == "push" ]]; then
+          echo "result=true" >> $GITHUB_OUTPUT
+        else
+          echo "result=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Show version info
+      run: |
+        echo "Version: ${{ steps.semver.outputs.version }}"
+        echo "Tag: ${{ steps.semver.outputs.tag }}"
+        echo "Should publish: ${{ steps.should_publish.outputs.result }}"
+
+  build-and-test:
+    needs: version
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore
+
+    - name: Build
+      run: |
+        dotnet build --no-restore --configuration Release \
+          -p:Version=${{ needs.version.outputs.version }} \
+          -p:AssemblyVersion=${{ needs.version.outputs.version }} \
+          -p:FileVersion=${{ needs.version.outputs.version }} \
+          -p:PackageVersion=${{ needs.version.outputs.version }}
+
+    - name: Test
+      run: dotnet test --no-build --configuration Release --verbosity normal
+
+    - name: Pack NuGet package
+      if: needs.version.outputs.should_publish == 'true'
+      run: |
+        dotnet pack ${{ env.PROJECT_PATH }} \
+          --no-build \
+          --configuration Release \
+          --output ./artifacts \
+          -p:PackageVersion=${{ needs.version.outputs.version }} \
+          -p:Version=${{ needs.version.outputs.version }}
+
+    - name: Upload NuGet package
+      if: needs.version.outputs.should_publish == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: nuget-package
+        path: ./artifacts/*.nupkg
+        retention-days: 7
+
+  publish:
+    needs: [version, build-and-test]
+    runs-on: ubuntu-latest
+    if: needs.version.outputs.should_publish == 'true'
+    environment: production
+    steps:
+    - name: Download NuGet package
+      uses: actions/download-artifact@v4
+      with:
+        name: nuget-package
+        path: ./artifacts
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Publish to NuGet
+      run: |
+        dotnet nuget push ./artifacts/*.nupkg \
+          --api-key ${{ secrets.NUGET_API_KEY }} \
+          --source https://api.nuget.org/v3/index.json \
+          --skip-duplicate
+
+    - name: Create GitHub Release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ needs.version.outputs.tag }}
+        release_name: Release ${{ needs.version.outputs.version }}
+        body: |
+          ## Release ${{ needs.version.outputs.version }}
+
+          ### Changes
+          - Automated release from CI/CD pipeline
+
+          ### NuGet Package
+          - Package: Deneblab.ZLoggerExtensions
+          - Version: ${{ needs.version.outputs.version }}
+          - Published to: https://www.nuget.org/packages/Deneblab.ZLoggerExtensions/
+
+        draft: false
+        prerelease: false

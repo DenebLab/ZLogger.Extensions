@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36518.9
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZLoggerExtensions", "ZLoggerExtensions\ZLoggerExtensions.csproj", "{A84E3732-77CA-74CD-A6C3-CEA5ECC7A272}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ZLoggerExtensions.Tests", "ZLoggerExtensions.Tests\ZLoggerExtensions.Tests.csproj", "{AE7FCC7E-9212-4653-1A85-CD7BA080E6EE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{A84E3732-77CA-74CD-A6C3-CEA5ECC7A272}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A84E3732-77CA-74CD-A6C3-CEA5ECC7A272}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A84E3732-77CA-74CD-A6C3-CEA5ECC7A272}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AE7FCC7E-9212-4653-1A85-CD7BA080E6EE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AE7FCC7E-9212-4653-1A85-CD7BA080E6EE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AE7FCC7E-9212-4653-1A85-CD7BA080E6EE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AE7FCC7E-9212-4653-1A85-CD7BA080E6EE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

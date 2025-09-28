@@ -1,14 +1,38 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>disable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+	<PropertyGroup>
+		<TargetFramework>net8.0</TargetFramework>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>enable</Nullable>
 
-  <ItemGroup>
-    <PackageReference Include="Overimagined.ZLoggerColorConsole" Version="1.0.0" />
-    <PackageReference Include="ZLogger" Version="2.5.10" />
-  </ItemGroup>
+		<!-- NuGet Package Metadata -->
+		<PackageId>Deneblab.ZLoggerExtensions</PackageId>
+		<Title>ZLogger Extensions</Title>
+		<Description>Extensions and advanced features for ZLogger, including file archiving, rotation, and advanced logging patterns.</Description>
+		<Authors>DenebLab</Authors>
+		<Company>DenebLab</Company>
+		<Product>ZLogger Extensions</Product>
+		<Copyright>Copyright © DenebLab 2025</Copyright>
+		<PackageTags>zlogger;logging;extensions;file-logging;archiving;rotation</PackageTags>
+		<PackageProjectUrl>https://github.com/DenebLab/ZLogger.Extensions</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/DenebLab/ZLogger.Extensions</RepositoryUrl>
+		<RepositoryType>git</RepositoryType>
+		<PackageLicenseExpression>MIT</PackageLicenseExpression>
+		<PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+		<IncludeSymbols>true</IncludeSymbols>
+		<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="ZLogger" Version="2.5.10" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Logging.Configuration" Version="8.0.0" />
+		<PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+	</ItemGroup>
+
+
 
 </Project>
