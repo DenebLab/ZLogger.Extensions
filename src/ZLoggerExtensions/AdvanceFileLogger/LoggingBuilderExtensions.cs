@@ -2,11 +2,8 @@ using System;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Configuration;
-using Microsoft.Extensions.Options;
-using ZLogger;
 
-namespace ZLoggerExtensions.AdvanceFileLogger;
+namespace Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 
 /// <summary>
 /// Extension methods for ILoggingBuilder to configure AdvanceFileLogger.

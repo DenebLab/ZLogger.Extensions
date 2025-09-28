@@ -1,10 +1,10 @@
+using Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
-using ZLoggerExtensions.AdvanceFileLogger;
 
-namespace ZLoggerExtensions.Tests;
+namespace Deneblab.ZLoggerExtensionsTests.AdvanceFileLoggerTests;
 
 public class IntegrationTests : IDisposable
 {

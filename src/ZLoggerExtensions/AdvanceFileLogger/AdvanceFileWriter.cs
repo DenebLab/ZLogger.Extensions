@@ -1,10 +1,9 @@
 using System;
 using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace ZLoggerExtensions.AdvanceFileLogger;
+namespace Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 
 /// <summary>
 /// Core file writing implementation with size monitoring and rolling logic.

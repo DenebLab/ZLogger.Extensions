@@ -2,11 +2,11 @@ using FluentAssertions;
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 using Xunit;
 using ZLogger;
-using ZLoggerExtensions.AdvanceFileLogger;
 
-namespace ZLoggerExtensions.Tests;
+namespace Deneblab.ZLoggerExtensionsTests.AdvanceFileLoggerTests;
 
 public class AdvanceFileAsyncLogProcessorTests : IDisposable
 {

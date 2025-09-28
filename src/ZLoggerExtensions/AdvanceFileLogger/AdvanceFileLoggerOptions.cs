@@ -1,6 +1,6 @@
 using System;
 
-namespace ZLoggerExtensions.AdvanceFileLogger;
+namespace Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 
 /// <summary>
 /// Configuration options for AdvanceFileLogger provider.

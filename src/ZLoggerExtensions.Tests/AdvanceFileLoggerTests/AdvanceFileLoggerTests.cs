@@ -3,11 +3,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using ZLoggerExtensions.AdvanceFileLogger;
 
-namespace ZLoggerExtensions.Tests;
+namespace Deneblab.ZLoggerExtensionsTests.AdvanceFileLoggerTests;
 
 /// <summary>
 /// Unit tests for AdvanceFileLogger functionality.

@@ -1,10 +1,11 @@
+using Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
-using ZLoggerExtensions.AdvanceFileLogger;
+using LoggingBuilderExtensions = Deneblab.ZLoggerExtensions.AdvanceFileLogger.LoggingBuilderExtensions;
 
-namespace ZLoggerExtensions.Tests;
+namespace Deneblab.ZLoggerExtensionsTests.AdvanceFileLoggerTests;
 
 public class LoggingBuilderExtensionsTests : IDisposable
 {
@@ -152,7 +153,7 @@ public class LoggingBuilderExtensionsTests : IDisposable
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            AdvanceFileLogger.LoggingBuilderExtensions.AddAdvanceFileLogger(null!));
+            LoggingBuilderExtensions.AddAdvanceFileLogger(null!));
     }
 
     [Fact]
@@ -292,7 +293,7 @@ public class LoggingBuilderExtensionsTests : IDisposable
     {
         // Act & Assert
         Assert.Throws<ArgumentNullException>(() =>
-            AdvanceFileLogger.ServiceCollectionExtensions.AddAdvanceFileLogger(null!));
+            ServiceCollectionExtensions.AddAdvanceFileLogger(null!));
     }
 
     [Fact]

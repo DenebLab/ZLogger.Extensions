@@ -2,7 +2,7 @@ using System;
 using System.Threading.Tasks;
 using ZLogger;
 
-namespace ZLoggerExtensions.AdvanceFileLogger;
+namespace Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 
 /// <summary>
 /// ZLogger IAsyncLogProcessor implementation for advanced file logging with rolling and archiving.

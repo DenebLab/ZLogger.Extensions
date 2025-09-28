@@ -1,9 +1,9 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Collections.Generic;
 
-namespace ZLoggerExtensions.AdvanceFileLogger;
+namespace Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 
 /// <summary>
 /// Handles archiving of log files and retention policy management.

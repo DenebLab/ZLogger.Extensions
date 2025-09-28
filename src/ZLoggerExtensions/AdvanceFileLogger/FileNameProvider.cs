@@ -1,9 +1,9 @@
 using System;
-using System.IO;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 
-namespace ZLoggerExtensions.AdvanceFileLogger;
+namespace Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 
 /// <summary>
 /// Provides file naming functionality following ZLogger rolling file conventions.

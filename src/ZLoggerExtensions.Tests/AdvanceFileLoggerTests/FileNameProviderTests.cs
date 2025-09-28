@@ -1,9 +1,9 @@
 using FluentAssertions;
 using System.Globalization;
+using Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 using Xunit;
-using ZLoggerExtensions.AdvanceFileLogger;
 
-namespace ZLoggerExtensions.Tests;
+namespace Deneblab.ZLoggerExtensionsTests.AdvanceFileLoggerTests;
 
 public class FileNameProviderTests
 {

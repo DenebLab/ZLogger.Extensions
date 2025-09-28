@@ -1,8 +1,8 @@
+using Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 using FluentAssertions;
 using Xunit;
-using ZLoggerExtensions.AdvanceFileLogger;
 
-namespace ZLoggerExtensions.Tests;
+namespace Deneblab.ZLoggerExtensionsTests.AdvanceFileLoggerTests;
 
 public class AdvanceFileWriterTests : IDisposable
 {
