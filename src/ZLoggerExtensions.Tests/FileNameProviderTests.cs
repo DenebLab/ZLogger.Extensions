@@ -11,14 +11,14 @@ public class FileNameProviderTests
     public void Constructor_WithValidPath_InitializesCorrectly()
     {
         // Arrange
-        var basePath = @"C:\logs\app.log";
+        var basePath = Path.Combine("logs", "app.log");
 
         // Act
         var provider = new FileNameProvider(basePath);
 
         // Assert
         provider.GetCurrentFilePath().Should().Be(basePath);
-        provider.GetLogDirectory().Should().Be(@"C:\logs");
+        provider.GetLogDirectory().Should().Be("logs");
     }
 
     [Fact]
@@ -78,7 +78,7 @@ public class FileNameProviderTests
     public void GetArchivedFilePath_WithValidInputs_ReturnsCorrectPath()
     {
         // Arrange
-        var basePath = @"C:\logs\app.log";
+        var basePath = Path.Combine("logs", "app.log");
         var provider = new FileNameProvider(basePath);
         var fileName = "app_20231225_143045.log";
         var archiveDir = "archive";
@@ -87,7 +87,7 @@ public class FileNameProviderTests
         var result = provider.GetArchivedFilePath(fileName, archiveDir);
 
         // Assert
-        result.Should().Be(@"C:\logs\archive\app_20231225_143045.log");
+        result.Should().Be(Path.Combine("logs", "archive", "app_20231225_143045.log"));
     }
 
 
@@ -96,14 +96,14 @@ public class FileNameProviderTests
     public void GetArchiveDirectoryPath_ReturnsCorrectPath()
     {
         // Arrange
-        var basePath = @"C:\logs\app.log";
+        var basePath = Path.Combine("logs", "app.log");
         var provider = new FileNameProvider(basePath);
 
         // Act
         var result = provider.GetArchiveDirectoryPath("archive");
 
         // Assert
-        result.Should().Be(@"C:\logs\archive");
+        result.Should().Be(Path.Combine("logs", "archive"));
     }
 
     [Fact]

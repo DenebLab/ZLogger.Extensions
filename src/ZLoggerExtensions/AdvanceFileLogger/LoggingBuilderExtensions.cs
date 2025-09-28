@@ -36,13 +36,13 @@ public static class LoggingBuilderExtensions
         if (builder == null)
             throw new ArgumentNullException(nameof(builder));
 
-        // Create options with configuration
-        var options = new AdvanceFileLoggerOptions();
-        configure?.Invoke(options);
-
-        // Create and register the ZLogger processor
-        var processor = new AdvanceFileAsyncLogProcessor(options);
-        builder.AddZLoggerLogProcessor(processor);
+        // Register the provider and options
+        builder.Services.TryAddEnumerable(ServiceDescriptor.Singleton<ILoggerProvider, AdvanceFileLoggerProvider>());
+        
+        if (configure != null)
+        {
+            builder.Services.Configure(configure);
+        }
 
         return builder;
     }
