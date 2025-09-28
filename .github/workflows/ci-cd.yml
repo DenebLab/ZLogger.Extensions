@@ -45,12 +45,12 @@ jobs:
     - name: Should publish to NuGet
       id: should_publish
       run: |
-        if [[ "${{ github.ref }}" == "refs/heads/main" && "${{ github.event_name }}" == "push" ]]; then
+        if [[ "${{ github.ref }}" == "refs/heads/production" && "${{ github.event_name }}" == "push" ]]; then
           echo "result=true" >> $GITHUB_OUTPUT
-          echo "✅ Will publish to NuGet (main branch push)"
+          echo "✅ Will publish to NuGet (production branch push)"
         else
           echo "result=false" >> $GITHUB_OUTPUT
-          echo "ℹ️ Will not publish to NuGet (not main branch push)"
+          echo "ℹ️ Will not publish to NuGet (not production branch push)"
         fi
 
     - name: Show version info

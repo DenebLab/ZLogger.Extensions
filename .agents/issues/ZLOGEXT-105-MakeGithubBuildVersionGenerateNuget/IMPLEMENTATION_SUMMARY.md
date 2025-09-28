@@ -39,12 +39,12 @@
 
 ### 🚀 Workflow Triggers
 
-#### Push to Main Branch
+#### Push to Production Branch
 ```
 version → build-and-test → publish (if tests pass) → GitHub release
 ```
 
-#### Push to Develop Branch
+#### Push to Main/Develop Branch
 ```
 version → build-and-test (no publishing)
 ```
