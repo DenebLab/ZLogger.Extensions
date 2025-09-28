@@ -29,6 +29,13 @@ function readSemverFromFile(p) {
   if (p.endsWith('.json')) {
     try {
       const obj = JSON.parse(content);
+      
+      // Support BaseVersion format (e.g., "0.1.0")
+      if (typeof obj.BaseVersion === 'string') {
+        return parseSemver(obj.BaseVersion);
+      }
+      
+      // Support legacy major/minor format
       if (typeof obj.major === 'number' && typeof obj.minor === 'number') {
         return {
           major: String(obj.major),

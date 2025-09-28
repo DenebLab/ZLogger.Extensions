@@ -10,7 +10,7 @@ inputs:
     required: false
     default: "config-change"
   config_file:
-    description: "Path to JSON file containing version object (e.g. .abcversion.json)"
+    description: "Path to JSON file containing version object (e.g. .abcversion.json with BaseVersion property)"
     required: false
     default: ".abcversion.json"
   tag_prefix:
