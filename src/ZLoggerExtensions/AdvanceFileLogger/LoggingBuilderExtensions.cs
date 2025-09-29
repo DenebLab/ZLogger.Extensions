@@ -163,6 +163,49 @@ public static class LoggingBuilderExtensions
             options.MaxArchivedFiles = maxArchivedFiles;
         });
     }
+
+    /// <summary>
+    /// Adds the AdvanceFileLogger provider with application name and rolling configuration.
+    /// Creates files named like "{appName}.{yyyy-MM-dd}_{index}.log".
+    /// </summary>
+    /// <param name="builder">The logging builder.</param>
+    /// <param name="appName">The application name to use in file names.</param>
+    /// <param name="maxBytes">The maximum file size in bytes before rolling.</param>
+    /// <returns>The logging builder for chaining.</returns>
+    public static ILoggingBuilder AddZLoggerRollingFile(
+        this ILoggingBuilder builder,
+        string appName,
+        long maxBytes)
+    {
+        return AddAdvanceFileLogger(builder, options =>
+        {
+            options.AppName = appName;
+            options.MaxBytes = maxBytes;
+        });
+    }
+
+    /// <summary>
+    /// Adds the AdvanceFileLogger provider with application name, rolling and archive configuration.
+    /// Creates files named like "{appName}.{yyyy-MM-dd}_{index}.log".
+    /// </summary>
+    /// <param name="builder">The logging builder.</param>
+    /// <param name="appName">The application name to use in file names.</param>
+    /// <param name="maxBytes">The maximum file size in bytes before rolling.</param>
+    /// <param name="maxArchivedFiles">The maximum number of archived files to keep.</param>
+    /// <returns>The logging builder for chaining.</returns>
+    public static ILoggingBuilder AddZLoggerRollingFile(
+        this ILoggingBuilder builder,
+        string appName,
+        long maxBytes,
+        int maxArchivedFiles)
+    {
+        return AddAdvanceFileLogger(builder, options =>
+        {
+            options.AppName = appName;
+            options.MaxBytes = maxBytes;
+            options.MaxArchivedFiles = maxArchivedFiles;
+        });
+    }
 }
 
 /// <summary>

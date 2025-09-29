@@ -255,4 +255,92 @@ public class Example
 
         serviceProvider.Dispose();
     }
+
+    /// <summary>
+    /// Example showing AppName usage in rolling file configuration.
+    /// </summary>
+    public static void AppNameRollingFile()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(builder =>
+        {
+            // Simple AppName configuration - creates files like MyWebAPI.2025-09-29_0.log
+            builder.AddZLoggerRollingFile("MyWebAPI", 1024 * 1024); // 1MB files
+        });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var logger = serviceProvider.GetRequiredService<ILogger<Example>>();
+
+        // This creates files like:
+        // MyWebAPI.2025-09-29_0.log (current file)
+        // MyWebAPI.2025-09-29_1.log (when file gets too large)
+        // MyWebAPI.2025-09-30_0.log (tomorrow's file)
+
+        logger.LogInformation("Web API started with application-specific log files");
+        logger.LogInformation("AppName allows easy identification of log files by application");
+
+        serviceProvider.Dispose();
+    }
+
+    /// <summary>
+    /// Example showing AppName with advanced configuration.
+    /// </summary>
+    public static void AppNameAdvancedConfiguration()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(builder =>
+        {
+            builder.AddAdvanceFileLogger(options =>
+            {
+                options.AppName = "OrderService";
+                options.MaxBytes = 2 * 1024 * 1024; // 2MB files
+                options.MaxArchivedFiles = 14; // Keep 2 weeks
+                options.ArchiveDirectory = "archived";
+            });
+        });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var logger = serviceProvider.GetRequiredService<ILogger<Example>>();
+
+        // This creates files like:
+        // OrderService.2025-09-29_0.log (current)
+        // archived/OrderService.2025-09-15_0.log (old files)
+
+        logger.LogInformation("Order service started with AppName: {AppName}", "OrderService");
+        logger.LogInformation("Log files are easily identifiable by service name");
+
+        serviceProvider.Dispose();
+    }
+
+    /// <summary>
+    /// Example showing custom file naming with AppName access.
+    /// </summary>
+    public static void CustomFileNamingWithAppName()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(builder =>
+        {
+            builder.AddAdvanceFileLogger(options =>
+            {
+                options.AppName = "DataProcessor";
+                // Custom naming that includes app name in a specific pattern
+                options.FileNameProvider = (dt, index) =>
+                    $"logs/{options.AppName}/{dt:yyyy-MM}/{options.AppName}_{dt:dd}_{index:D3}.log";
+                options.MaxBytes = 5 * 1024 * 1024; // 5MB files
+            });
+        });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var logger = serviceProvider.GetRequiredService<ILogger<Example>>();
+
+        // This creates files like:
+        // logs/DataProcessor/2025-09/DataProcessor_29_000.log
+        // logs/DataProcessor/2025-09/DataProcessor_29_001.log
+        // logs/DataProcessor/2025-10/DataProcessor_01_000.log
+
+        logger.LogInformation("Data processor with custom file naming pattern");
+        logger.LogInformation("AppName is accessible in custom FileNameProvider functions");
+
+        serviceProvider.Dispose();
+    }
 }

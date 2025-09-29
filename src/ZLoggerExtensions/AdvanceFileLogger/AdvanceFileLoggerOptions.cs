@@ -14,6 +14,11 @@ public class AdvanceFileLoggerOptions
     /// </summary>
     public Func<DateTime, int, string>? FileNameProvider { get; set; }
     /// <summary>
+    /// Gets or sets the application name used in log file names.
+    /// </summary>
+    public string AppName { get; set; } = "app";
+
+    /// <summary>
     /// Gets or sets the base file path for log files.
     /// This property is used when FileNameProvider is null for backward compatibility.
     /// </summary>
@@ -76,7 +81,7 @@ public class AdvanceFileLoggerOptions
 
         return (date, index) =>
         {
-            var fileName = $"{date:yyyy-MM-dd}_{index}{extension}";
+            var fileName = $"{AppName}.{date:yyyy-MM-dd}_{index}{extension}";
             return string.IsNullOrEmpty(directory) ? fileName : Path.Combine(directory, fileName);
         };
     }
@@ -89,6 +94,9 @@ public class AdvanceFileLoggerOptions
     {
         if (FileNameProvider == null && string.IsNullOrWhiteSpace(FilePath))
             throw new ArgumentException("Either FileNameProvider must be set or FilePath cannot be null or empty.", nameof(FilePath));
+
+        if (string.IsNullOrWhiteSpace(AppName))
+            throw new ArgumentException("AppName cannot be null or empty.", nameof(AppName));
 
         if (MaxBytes < 0)
             throw new ArgumentException("MaxBytes cannot be negative.", nameof(MaxBytes));

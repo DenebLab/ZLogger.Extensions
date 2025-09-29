@@ -77,7 +77,10 @@ public class LoggingBuilderExtensionsTests : IDisposable
 
         // Assert
         serviceProvider.Dispose();
-        File.Exists(testFilePath).Should().BeTrue();
+        // With new API, files use date+index pattern, so check for the expected pattern
+        var today = DateTime.Today;
+        var expectedFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
+        File.Exists(expectedFile).Should().BeTrue();
     }
 
     [Fact]
@@ -97,7 +100,10 @@ public class LoggingBuilderExtensionsTests : IDisposable
 
         // Assert
         serviceProvider.Dispose();
-        File.Exists(testFilePath).Should().BeTrue();
+        // With new API, files use date+index pattern
+        var today = DateTime.Today;
+        var expectedFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
+        File.Exists(expectedFile).Should().BeTrue();
     }
 
     [Fact]
@@ -121,7 +127,10 @@ public class LoggingBuilderExtensionsTests : IDisposable
 
         // Assert
         serviceProvider.Dispose();
-        File.Exists(testFilePath).Should().BeTrue();
+        // With new API, files use date+index pattern
+        var today = DateTime.Today;
+        var expectedFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
+        File.Exists(expectedFile).Should().BeTrue();
     }
 
     [Fact]
@@ -145,7 +154,10 @@ public class LoggingBuilderExtensionsTests : IDisposable
 
         // Assert
         serviceProvider.Dispose();
-        File.Exists(testFilePath).Should().BeTrue();
+        // With new API, files use date+index pattern
+        var today = DateTime.Today;
+        var expectedFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
+        File.Exists(expectedFile).Should().BeTrue();
     }
 
     [Fact]
@@ -204,9 +216,12 @@ public class LoggingBuilderExtensionsTests : IDisposable
 
         // Assert
         serviceProvider.Dispose();
-        File.Exists(testFilePath).Should().BeTrue();
+        // With new API, files use date+index pattern
+        var today = DateTime.Today;
+        var expectedFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
+        File.Exists(expectedFile).Should().BeTrue();
 
-        var content = File.ReadAllText(testFilePath);
+        var content = File.ReadAllText(expectedFile);
         content.Should().Contain("Message from logger 1");
         content.Should().Contain("Message from logger 2");
         content.Should().Contain("Message from logger 3");
@@ -323,7 +338,10 @@ public class LoggingBuilderExtensionsTests : IDisposable
         loggerProviders.Should().ContainSingle(p => p is AdvanceFileLoggerProvider);
 
         serviceProvider.Dispose();
-        File.Exists(testFilePath).Should().BeTrue();
+        // With new API, files use date+index pattern
+        var today = DateTime.Today;
+        var expectedFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
+        File.Exists(expectedFile).Should().BeTrue();
     }
 
     public void Dispose()

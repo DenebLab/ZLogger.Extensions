@@ -55,7 +55,7 @@ public class FileArchiverTests : IDisposable
     public void ArchiveFile_WithExistingFile_MovesFileToArchive()
     {
         // Arrange
-        var sourceFile = Path.Combine(_testDirectory, "test.log");
+        var sourceFile = Path.Combine(_testDirectory, "2023-12-25_0.log");
         File.WriteAllText(sourceFile, "Test content");
         var timestamp = new DateTime(2023, 12, 25, 14, 30, 45);
 
@@ -69,7 +69,8 @@ public class FileArchiverTests : IDisposable
         var archiveDir = Path.Combine(_testDirectory, "archive");
         Directory.Exists(archiveDir).Should().BeTrue();
 
-        var archivedFile = Path.Combine(archiveDir, "test_20231225_143045.log");
+        // The file should be moved to archive with the same name
+        var archivedFile = Path.Combine(archiveDir, "2023-12-25_0.log");
         File.Exists(archivedFile).Should().BeTrue();
         File.ReadAllText(archivedFile).Should().Be("Test content");
     }
@@ -101,7 +102,8 @@ public class FileArchiverTests : IDisposable
     public void ArchiveCurrentFile_WithExistingFile_ArchivesSuccessfully()
     {
         // Arrange
-        var sourceFile = Path.Combine(_testDirectory, "test.log");
+        var today = DateTime.Today;
+        var sourceFile = Path.Combine(_testDirectory, $"{today:yyyy-MM-dd}_0.log");
         File.WriteAllText(sourceFile, "Current log content");
 
         // Act
@@ -123,14 +125,14 @@ public class FileArchiverTests : IDisposable
         var archiveDir = Path.Combine(_testDirectory, "archive");
         Directory.CreateDirectory(archiveDir);
 
-        // Create more files than the retention limit
+        // Create more files than the retention limit using the new date+index pattern
         var files = new[]
         {
-            "test_20231220_100000.log",
-            "test_20231221_100000.log",
-            "test_20231222_100000.log",
-            "test_20231223_100000.log",
-            "test_20231224_100000.log"
+            "2023-12-20_0.log",
+            "2023-12-21_0.log",
+            "2023-12-22_0.log",
+            "2023-12-23_0.log",
+            "2023-12-24_0.log"
         };
 
         foreach (var file in files)
@@ -147,9 +149,9 @@ public class FileArchiverTests : IDisposable
         remainingFiles.Should().HaveCount(_options.MaxArchivedFiles);
 
         // Should keep the most recent files
-        remainingFiles.Should().Contain(f => f.Contains("20231224"));
-        remainingFiles.Should().Contain(f => f.Contains("20231223"));
-        remainingFiles.Should().Contain(f => f.Contains("20231222"));
+        remainingFiles.Should().Contain(f => f.Contains("2023-12-24"));
+        remainingFiles.Should().Contain(f => f.Contains("2023-12-23"));
+        remainingFiles.Should().Contain(f => f.Contains("2023-12-22"));
     }
 
     [Fact]
@@ -159,11 +161,11 @@ public class FileArchiverTests : IDisposable
         var archiveDir = Path.Combine(_testDirectory, "archive");
         Directory.CreateDirectory(archiveDir);
 
-        // Create fewer files than the retention limit
+        // Create fewer files than the retention limit using the new date+index pattern
         var files = new[]
         {
-            "test_20231222_100000.log",
-            "test_20231223_100000.log"
+            "2023-12-22_0.log",
+            "2023-12-23_0.log"
         };
 
         foreach (var file in files)
@@ -188,7 +190,7 @@ public class FileArchiverTests : IDisposable
         var archiveDir = Path.Combine(_testDirectory, "archive");
         Directory.CreateDirectory(archiveDir);
 
-        var filePath = Path.Combine(archiveDir, "test_20231225_100000.log");
+        var filePath = Path.Combine(archiveDir, "2023-12-25_0.log");
         File.WriteAllText(filePath, "content");
 
         // Act
@@ -205,7 +207,7 @@ public class FileArchiverTests : IDisposable
         var archiveDir = Path.Combine(_testDirectory, "archive");
         Directory.CreateDirectory(archiveDir);
 
-        var fileName = "test_20231225_143045.log";
+        var fileName = "2023-12-25_0.log";
         var filePath = Path.Combine(archiveDir, fileName);
         File.WriteAllText(filePath, "test content");
 
@@ -217,7 +219,7 @@ public class FileArchiverTests : IDisposable
         var fileInfo = archivedFiles.First();
         fileInfo.FileName.Should().Be(fileName);
         fileInfo.FilePath.Should().Be(filePath);
-        fileInfo.Timestamp.Should().Be(new DateTime(2023, 12, 25, 14, 30, 45));
+        fileInfo.Timestamp.Should().Be(new DateTime(2023, 12, 25));
         fileInfo.Size.Should().BeGreaterThan(0);
     }
 
@@ -244,8 +246,8 @@ public class FileArchiverTests : IDisposable
         var content1 = "Content 1";
         var content2 = "Content 2 is longer";
 
-        File.WriteAllText(Path.Combine(archiveDir, "test_20231225_100000.log"), content1);
-        File.WriteAllText(Path.Combine(archiveDir, "test_20231225_110000.log"), content2);
+        File.WriteAllText(Path.Combine(archiveDir, "2023-12-25_0.log"), content1);
+        File.WriteAllText(Path.Combine(archiveDir, "2023-12-25_1.log"), content2);
 
         var expectedSize = System.Text.Encoding.UTF8.GetByteCount(content1) +
                           System.Text.Encoding.UTF8.GetByteCount(content2);
@@ -264,9 +266,9 @@ public class FileArchiverTests : IDisposable
         var archiveDir = Path.Combine(_testDirectory, "archive");
         Directory.CreateDirectory(archiveDir);
 
-        File.WriteAllText(Path.Combine(archiveDir, "test_20231225_100000.log"), "content1");
-        File.WriteAllText(Path.Combine(archiveDir, "test_20231225_110000.log"), "content2");
-        File.WriteAllText(Path.Combine(archiveDir, "test_20231225_120000.log"), "content3");
+        File.WriteAllText(Path.Combine(archiveDir, "2023-12-25_0.log"), "content1");
+        File.WriteAllText(Path.Combine(archiveDir, "2023-12-25_1.log"), "content2");
+        File.WriteAllText(Path.Combine(archiveDir, "2023-12-25_2.log"), "content3");
 
         // Act
         var count = _archiver.GetArchivedFileCount();
@@ -284,7 +286,7 @@ public class FileArchiverTests : IDisposable
         Directory.CreateDirectory(archiveDir);
 
         // Create fewer files than limit
-        File.WriteAllText(Path.Combine(archiveDir, "test_20231225_100000.log"), "content");
+        File.WriteAllText(Path.Combine(archiveDir, "2023-12-25_0.log"), "content");
 
         // Act
         var canArchive = _archiver.CanArchiveMoreFiles();
@@ -302,8 +304,8 @@ public class FileArchiverTests : IDisposable
         Directory.CreateDirectory(archiveDir);
 
         // Create files at the limit
-        File.WriteAllText(Path.Combine(archiveDir, "test_20231225_100000.log"), "content1");
-        File.WriteAllText(Path.Combine(archiveDir, "test_20231225_110000.log"), "content2");
+        File.WriteAllText(Path.Combine(archiveDir, "2023-12-25_0.log"), "content1");
+        File.WriteAllText(Path.Combine(archiveDir, "2023-12-25_1.log"), "content2");
 
         // Act
         var canArchive = _archiver.CanArchiveMoreFiles();
