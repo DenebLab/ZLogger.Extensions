@@ -16,15 +16,14 @@ public class FileArchiverTests : IDisposable
         _testDirectory = Path.Combine(Path.GetTempPath(), "FileArchiverTests", Guid.NewGuid().ToString());
         Directory.CreateDirectory(_testDirectory);
 
-        var logFilePath = Path.Combine(_testDirectory, "test.log");
         _options = new AdvanceFileLoggerOptions
         {
-            FilePath = logFilePath,
+            FileNameProvider = (dt, index) => Path.Combine(_testDirectory, $"{dt:yyyy-MM-dd}_{index}.log"),
             MaxArchivedFiles = 3,
             ArchiveDirectory = "archive"
         };
 
-        _fileNameProvider = new FileNameProvider(logFilePath);
+        _fileNameProvider = new FileNameProvider(_options.GetFileNameProvider());
         _archiver = new FileArchiver(_fileNameProvider, _options);
     }
 

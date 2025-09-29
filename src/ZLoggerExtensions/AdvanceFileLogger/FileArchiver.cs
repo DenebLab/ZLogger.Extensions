@@ -47,15 +47,21 @@ public class FileArchiver
                 Directory.CreateDirectory(archiveDirectory);
             }
 
-            // Generate rolled file name with timestamp
+            // For the new date+index pattern, just move the file as-is to archive
+            // since the file already has the proper date+index naming
             var sourceFileName = Path.GetFileName(sourceFilePath);
-            var baseFileName = Path.GetFileNameWithoutExtension(sourceFileName);
-            var extension = Path.GetExtension(sourceFileName);
+            var destinationPath = Path.Combine(archiveDirectory, sourceFileName);
 
-            // Create timestamped archive file name
-            var timestampSuffix = timestamp.ToString("yyyyMMdd_HHmmss", System.Globalization.CultureInfo.InvariantCulture);
-            var archivedFileName = $"{baseFileName}_{timestampSuffix}{extension}";
-            var destinationPath = Path.Combine(archiveDirectory, archivedFileName);
+            // Ensure unique file name in archive directory
+            var counter = 1;
+            var baseName = Path.GetFileNameWithoutExtension(sourceFileName);
+            var extension = Path.GetExtension(sourceFileName);
+            while (File.Exists(destinationPath))
+            {
+                var uniqueFileName = $"{baseName}_archived_{counter}{extension}";
+                destinationPath = Path.Combine(archiveDirectory, uniqueFileName);
+                counter++;
+            }
 
             // Move file to archive
             File.Move(sourceFilePath, destinationPath);
@@ -138,12 +144,24 @@ public class FileArchiver
                 .Select(file =>
                 {
                     var fileName = Path.GetFileName(file);
-                    var timestamp = _fileNameProvider.ExtractTimestampFromRolledFile(fileName);
+                    DateTime timestamp;
+
+                    // Try to extract date from the new date+index pattern
+                    if (_fileNameProvider.TryParseFilePath(fileName, out var fileDate, out _))
+                    {
+                        timestamp = fileDate;
+                    }
+                    else
+                    {
+                        // Fallback to file creation time
+                        timestamp = File.GetCreationTimeUtc(file);
+                    }
+
                     return new ArchivedFileInfo
                     {
                         FilePath = file,
                         FileName = fileName,
-                        Timestamp = timestamp ?? File.GetCreationTimeUtc(file),
+                        Timestamp = timestamp,
                         Size = new FileInfo(file).Length
                     };
                 })

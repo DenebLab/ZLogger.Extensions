@@ -2,57 +2,78 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 
 /// <summary>
-/// Provides file naming functionality following ZLogger rolling file conventions.
+/// Provides file naming functionality following ZLogger rolling file conventions with date+index pattern.
 /// </summary>
 public class FileNameProvider
 {
-    private readonly string _baseFilePath;
-    private readonly string _directory;
-    private readonly string _fileNameWithoutExtension;
-    private readonly string _extension;
+    private readonly Func<DateTime, int, string> _fileNameProvider;
+    private readonly string _baseDirectory;
 
     /// <summary>
     /// Initializes a new instance of the FileNameProvider class.
     /// </summary>
-    /// <param name="baseFilePath">The base file path for log files.</param>
-    public FileNameProvider(string baseFilePath)
+    /// <param name="fileNameProvider">The function that generates file names based on date and index.</param>
+    public FileNameProvider(Func<DateTime, int, string> fileNameProvider)
     {
-        _baseFilePath = baseFilePath ?? throw new ArgumentNullException(nameof(baseFilePath));
+        _fileNameProvider = fileNameProvider ?? throw new ArgumentNullException(nameof(fileNameProvider));
 
-        _directory = Path.GetDirectoryName(_baseFilePath) ?? string.Empty;
-        _fileNameWithoutExtension = Path.GetFileNameWithoutExtension(_baseFilePath);
-        _extension = Path.GetExtension(_baseFilePath);
-
-        if (string.IsNullOrEmpty(_extension))
-        {
-            _extension = ".log";
-        }
+        // Extract base directory from a sample file name to determine where logs should be stored
+        var samplePath = _fileNameProvider(DateTime.UtcNow, 0);
+        _baseDirectory = Path.GetDirectoryName(samplePath) ?? string.Empty;
     }
 
     /// <summary>
-    /// Gets the current log file path.
+    /// Gets the current log file path for the specified date and index.
+    /// </summary>
+    /// <param name="date">The date for the log file.</param>
+    /// <param name="index">The index for the log file.</param>
+    /// <returns>The current log file path.</returns>
+    public string GetCurrentFilePath(DateTime date, int index)
+    {
+        return _fileNameProvider(date, index);
+    }
+
+    /// <summary>
+    /// Gets the current log file path for today with index 0.
     /// </summary>
     /// <returns>The current log file path.</returns>
     public string GetCurrentFilePath()
     {
-        return _baseFilePath;
+        return GetCurrentFilePath(DateTime.UtcNow.Date, 0);
     }
 
     /// <summary>
-    /// Gets a rolled file path with timestamp suffix.
+    /// Gets the next file path when rolling due to size limit.
     /// </summary>
-    /// <param name="timestamp">The timestamp for the rolled file.</param>
-    /// <returns>The rolled file path.</returns>
-    public string GetRolledFilePath(DateTime timestamp)
+    /// <param name="currentFilePath">The current file path.</param>
+    /// <returns>The next file path with incremented index.</returns>
+    public string GetNextFilePath(string currentFilePath)
     {
-        var timestampSuffix = timestamp.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
-        var rolledFileName = $"{_fileNameWithoutExtension}_{timestampSuffix}{_extension}";
+        if (TryParseFilePath(currentFilePath, out var date, out var index))
+        {
+            return GetCurrentFilePath(date, index + 1);
+        }
 
-        return Path.Combine(_directory, rolledFileName);
+        // Fallback: use current date with index 1
+        return GetCurrentFilePath(DateTime.UtcNow.Date, 1);
+    }
+
+    /// <summary>
+    /// Gets the archive directory path.
+    /// </summary>
+    /// <param name="archiveDirectory">The archive directory name.</param>
+    /// <returns>The full archive directory path.</returns>
+    public string GetArchiveDirectoryPath(string archiveDirectory)
+    {
+        if (string.IsNullOrWhiteSpace(archiveDirectory))
+            throw new ArgumentException("Archive directory cannot be null or empty.", nameof(archiveDirectory));
+
+        return Path.Combine(_baseDirectory, archiveDirectory);
     }
 
     /// <summary>
@@ -66,24 +87,8 @@ public class FileNameProvider
         if (string.IsNullOrWhiteSpace(originalFileName))
             throw new ArgumentException("Original file name cannot be null or empty.", nameof(originalFileName));
 
-        if (string.IsNullOrWhiteSpace(archiveDirectory))
-            throw new ArgumentException("Archive directory cannot be null or empty.", nameof(archiveDirectory));
-
-        var archivePath = Path.Combine(_directory, archiveDirectory);
+        var archivePath = GetArchiveDirectoryPath(archiveDirectory);
         return Path.Combine(archivePath, originalFileName);
-    }
-
-    /// <summary>
-    /// Gets the archive directory path.
-    /// </summary>
-    /// <param name="archiveDirectory">The archive directory name.</param>
-    /// <returns>The full archive directory path.</returns>
-    public string GetArchiveDirectoryPath(string archiveDirectory)
-    {
-        if (string.IsNullOrWhiteSpace(archiveDirectory))
-            throw new ArgumentException("Archive directory cannot be null or empty.", nameof(archiveDirectory));
-
-        return Path.Combine(_directory, archiveDirectory);
     }
 
     /// <summary>
@@ -92,7 +97,7 @@ public class FileNameProvider
     /// <returns>The directory path.</returns>
     public string GetLogDirectory()
     {
-        return _directory;
+        return _baseDirectory;
     }
 
     /// <summary>
@@ -102,54 +107,147 @@ public class FileNameProvider
     /// <returns>True if the file matches the rolling pattern.</returns>
     public bool IsRolledFile(string fileName)
     {
-        if (string.IsNullOrWhiteSpace(fileName))
-            return false;
-
-        var fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
-        var extension = Path.GetExtension(fileName);
-
-        // Check if extension matches
-        if (!string.Equals(extension, _extension, StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        // Check if it starts with our base file name followed by underscore and timestamp
-        var expectedPrefix = _fileNameWithoutExtension + "_";
-        if (!fileNameWithoutExt.StartsWith(expectedPrefix, StringComparison.OrdinalIgnoreCase))
-            return false;
-
-        // Check if the suffix looks like a timestamp (yyyyMMdd_HHmmss)
-        var timestampPart = fileNameWithoutExt.Substring(expectedPrefix.Length);
-        return timestampPart.Length == 15 &&
-               timestampPart[8] == '_' &&
-               IsNumeric(timestampPart.Substring(0, 8)) &&
-               IsNumeric(timestampPart.Substring(9));
+        return TryParseFilePath(fileName, out _, out _);
     }
 
     /// <summary>
-    /// Extracts the timestamp from a rolled file name.
+    /// Checks if a file path matches the current date pattern.
     /// </summary>
-    /// <param name="fileName">The rolled file name.</param>
-    /// <returns>The timestamp if extraction successful, null otherwise.</returns>
-    public DateTime? ExtractTimestampFromRolledFile(string fileName)
+    /// <param name="filePath">The file path to check.</param>
+    /// <returns>True if the file matches the current date.</returns>
+    public bool IsCurrentDateFile(string filePath)
     {
-        if (!IsRolledFile(fileName))
-            return null;
-
-        var fileNameWithoutExt = Path.GetFileNameWithoutExtension(fileName);
-        var expectedPrefix = _fileNameWithoutExtension + "_";
-        var timestampPart = fileNameWithoutExt.Substring(expectedPrefix.Length);
-
-        if (DateTime.TryParseExact(timestampPart, "yyyyMMdd_HHmmss",
-            CultureInfo.InvariantCulture, DateTimeStyles.None, out var timestamp))
-        {
-            return timestamp;
-        }
-
-        return null;
+        return IsCurrentDateFile(filePath, DateTime.UtcNow.Date);
     }
 
-    private static bool IsNumeric(string str)
+    /// <summary>
+    /// Checks if a file path matches the specified date pattern.
+    /// </summary>
+    /// <param name="filePath">The file path to check.</param>
+    /// <param name="date">The date to check against.</param>
+    /// <returns>True if the file matches the specified date.</returns>
+    public bool IsCurrentDateFile(string filePath, DateTime date)
     {
-        return !string.IsNullOrEmpty(str) && str.All(char.IsDigit);
+        if (TryParseFilePath(filePath, out var fileDate, out _))
+        {
+            return fileDate.Date == date.Date;
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Gets all log files that match the current naming pattern.
+    /// </summary>
+    /// <returns>Array of file paths that match the pattern.</returns>
+    public string[] GetAllLogFiles()
+    {
+        if (string.IsNullOrEmpty(_baseDirectory) || !Directory.Exists(_baseDirectory))
+            return Array.Empty<string>();
+
+        return Directory.GetFiles(_baseDirectory, "*")
+            .Where(IsRolledFile)
+            .OrderBy(f => f)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Gets log files older than the specified number of days.
+    /// </summary>
+    /// <param name="daysToKeep">Number of days to keep.</param>
+    /// <returns>Array of file paths older than the specified days.</returns>
+    public string[] GetOldLogFiles(int daysToKeep)
+    {
+        var cutoffDate = DateTime.UtcNow.Date.AddDays(-daysToKeep);
+
+        return GetAllLogFiles()
+            .Where(filePath =>
+            {
+                if (TryParseFilePath(filePath, out var fileDate, out _))
+                {
+                    return fileDate.Date < cutoffDate;
+                }
+                return false;
+            })
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Tries to parse a file path to extract date and index information.
+    /// </summary>
+    /// <param name="filePath">The file path to parse.</param>
+    /// <param name="date">The extracted date.</param>
+    /// <param name="index">The extracted index.</param>
+    /// <returns>True if parsing was successful.</returns>
+    public bool TryParseFilePath(string filePath, out DateTime date, out int index)
+    {
+        date = default;
+        index = 0;
+
+        if (string.IsNullOrWhiteSpace(filePath))
+            return false;
+
+        try
+        {
+            // Generate a sample file to understand the pattern
+            var samplePath = _fileNameProvider(new DateTime(2025, 09, 29), 42);
+            var sampleFileName = Path.GetFileName(samplePath);
+
+            // Create a regex pattern from the sample
+            // Replace the date part with a regex group and index with another group
+            var datePattern = @"(\d{4}-\d{2}-\d{2})";
+            var indexPattern = @"(\d+)";
+
+            // Build pattern by replacing known values in sample with regex groups
+            var pattern = sampleFileName
+                .Replace("2025-09-29", datePattern)
+                .Replace("42", indexPattern);
+
+            // Escape other regex special characters
+            pattern = Regex.Escape(pattern)
+                .Replace(Regex.Escape(datePattern), datePattern)
+                .Replace(Regex.Escape(indexPattern), indexPattern);
+
+            var fileName = Path.GetFileName(filePath);
+            var match = Regex.Match(fileName, pattern);
+
+            if (match.Success && match.Groups.Count >= 3)
+            {
+                if (DateTime.TryParseExact(match.Groups[1].Value, "yyyy-MM-dd",
+                    CultureInfo.InvariantCulture, DateTimeStyles.None, out date) &&
+                    int.TryParse(match.Groups[2].Value, out index))
+                {
+                    return true;
+                }
+            }
+        }
+        catch
+        {
+            // If pattern matching fails, return false
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Gets the highest index for files of the current date.
+    /// </summary>
+    /// <param name="date">The date to check for.</param>
+    /// <returns>The highest index found, or -1 if no files exist for that date.</returns>
+    public int GetHighestIndexForDate(DateTime date)
+    {
+        var maxIndex = -1;
+        var allFiles = GetAllLogFiles();
+
+        foreach (var filePath in allFiles)
+        {
+            if (TryParseFilePath(filePath, out var fileDate, out var index) &&
+                fileDate.Date == date.Date &&
+                index > maxIndex)
+            {
+                maxIndex = index;
+            }
+        }
+
+        return maxIndex;
     }
 }

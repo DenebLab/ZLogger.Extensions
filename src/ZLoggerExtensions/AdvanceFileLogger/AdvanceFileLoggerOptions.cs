@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 
 namespace Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 
@@ -8,7 +9,13 @@ namespace Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 public class AdvanceFileLoggerOptions
 {
     /// <summary>
+    /// Gets or sets the file name provider function that generates file names based on date and index.
+    /// If null, uses the FilePath property for backward compatibility.
+    /// </summary>
+    public Func<DateTime, int, string>? FileNameProvider { get; set; }
+    /// <summary>
     /// Gets or sets the base file path for log files.
+    /// This property is used when FileNameProvider is null for backward compatibility.
     /// </summary>
     public string FilePath { get; set; } = "logs/app.log";
 
@@ -53,13 +60,35 @@ public class AdvanceFileLoggerOptions
     public bool AllowExternalAccess { get; set; } = true;
 
     /// <summary>
+    /// Gets the effective file name provider, either the custom one or a default based on FilePath.
+    /// </summary>
+    /// <returns>The file name provider function.</returns>
+    public Func<DateTime, int, string> GetFileNameProvider()
+    {
+        if (FileNameProvider != null)
+            return FileNameProvider;
+
+        // Default provider for backward compatibility - creates ZLogger RollingFile style names
+        var directory = Path.GetDirectoryName(FilePath) ?? string.Empty;
+        var extension = Path.GetExtension(FilePath);
+        if (string.IsNullOrEmpty(extension))
+            extension = ".log";
+
+        return (date, index) =>
+        {
+            var fileName = $"{date:yyyy-MM-dd}_{index}{extension}";
+            return string.IsNullOrEmpty(directory) ? fileName : Path.Combine(directory, fileName);
+        };
+    }
+
+    /// <summary>
     /// Validates the configuration options.
     /// </summary>
     /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
     public void Validate()
     {
-        if (string.IsNullOrWhiteSpace(FilePath))
-            throw new ArgumentException("FilePath cannot be null or empty.", nameof(FilePath));
+        if (FileNameProvider == null && string.IsNullOrWhiteSpace(FilePath))
+            throw new ArgumentException("Either FileNameProvider must be set or FilePath cannot be null or empty.", nameof(FilePath));
 
         if (MaxBytes < 0)
             throw new ArgumentException("MaxBytes cannot be negative.", nameof(MaxBytes));

@@ -196,4 +196,63 @@ public class Example
 
         serviceProvider.Dispose();
     }
+
+    /// <summary>
+    /// Example showing new ZLogger RollingFile-style configuration.
+    /// </summary>
+    public static void ZLoggerRollingFileStyle()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(builder =>
+        {
+            // New ZLogger-style API: files named like 2025-09-29_0.log, 2025-09-29_1.log, etc.
+            builder.AddZLoggerRollingFile((dt, index) => $"logs/{dt:yyyy-MM-dd}_{index}.log", 1024 * 1024);
+        });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var logger = serviceProvider.GetRequiredService<ILogger<Example>>();
+
+        // This will create files like:
+        // logs/2025-09-29_0.log (current file for today)
+        // logs/2025-09-29_1.log (when file gets too large)
+        // logs/2025-09-30_0.log (tomorrow's file)
+
+        for (int i = 0; i < 1000; i++)
+        {
+            logger.LogInformation("ZLogger RollingFile-style logging: Message {MessageId} at {Timestamp}",
+                i, DateTime.UtcNow);
+        }
+
+        serviceProvider.Dispose();
+    }
+
+    /// <summary>
+    /// Example showing advanced ZLogger RollingFile configuration.
+    /// </summary>
+    public static void AdvancedZLoggerRollingFile()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging(builder =>
+        {
+            // Advanced configuration with custom path structure and archive settings
+            builder.AddZLoggerRollingFile(
+                (dt, index) => $"applications/myapp/{dt:yyyy}/{dt:MM}/{dt:yyyy-MM-dd}_{index}.log",
+                5 * 1024 * 1024, // 5MB files
+                30); // Keep 30 days of logs
+        });
+
+        var serviceProvider = services.BuildServiceProvider();
+        var logger = serviceProvider.GetRequiredService<ILogger<Example>>();
+
+        // This creates a hierarchical structure:
+        // applications/myapp/2025/09/2025-09-29_0.log
+        // applications/myapp/2025/09/2025-09-29_1.log
+        // applications/myapp/2025/10/2025-10-01_0.log
+
+        logger.LogInformation("Application started with advanced rolling file configuration");
+        logger.LogDebug("Debug message with structured data: {Data}", new { UserId = 123, Action = "Login" });
+        logger.LogWarning("Warning: Advanced logging configuration active");
+
+        serviceProvider.Dispose();
+    }
 }

@@ -113,25 +113,27 @@ public class AdvanceFileLoggerTests
     /// </summary>
     public void TestFileNameProvider()
     {
-        var basePath = Path.Combine(_testDirectory, "test.log");
-        var provider = new FileNameProvider(basePath);
+        Func<DateTime, int, string> nameProvider = (dt, index) => Path.Combine(_testDirectory, $"{dt:yyyy-MM-dd}_{index}.log");
+        var provider = new FileNameProvider(nameProvider);
 
-        // Test current file path
-        var currentPath = provider.GetCurrentFilePath();
-        Assert.Equal(basePath, currentPath);
+        // Test current file path with date and index
+        var testDate = new DateTime(2023, 12, 25);
+        var currentPath = provider.GetCurrentFilePath(testDate, 0);
+        Assert.Contains("2023-12-25_0.log", currentPath);
 
-        // Test rolled file path
-        var timestamp = new DateTime(2023, 12, 25, 14, 30, 45);
-        var rolledPath = provider.GetRolledFilePath(timestamp);
-        Assert.Contains("_20231225_143045", rolledPath);
+        // Test next file path
+        var currentFile = Path.Combine(_testDirectory, "2023-12-25_2.log");
+        var nextPath = provider.GetNextFilePath(currentFile);
+        Assert.Contains("2023-12-25_3.log", nextPath);
 
         // Test archive path
-        var archivePath = provider.GetArchivedFilePath("test_20231225_143045.log", "archive");
+        var archivePath = provider.GetArchivedFilePath("2023-12-25_0.log", "archive");
         Assert.Contains("archive", archivePath);
-        Assert.Contains("test_20231225_143045.log", archivePath);
+        Assert.Contains("2023-12-25_0.log", archivePath);
 
         // Test rolled file detection
-        Assert.True(provider.IsRolledFile("test_20231225_143045.log"));
+        Assert.True(provider.IsRolledFile("2023-12-25_0.log"));
+        Assert.True(provider.IsRolledFile("2023-12-25_5.log"));
         Assert.False(provider.IsRolledFile("test.log"));
         Assert.False(provider.IsRolledFile("other_file.txt"));
     }
@@ -141,21 +143,21 @@ public class AdvanceFileLoggerTests
     /// </summary>
     public void TestFileArchiver()
     {
-        var basePath = Path.Combine(_testDirectory, "archive_test.log");
         var options = new AdvanceFileLoggerOptions
         {
-            FilePath = basePath,
+            FileNameProvider = (dt, index) => Path.Combine(_testDirectory, $"{dt:yyyy-MM-dd}_{index}.log"),
             MaxArchivedFiles = 5
         };
 
-        var provider = new FileNameProvider(basePath);
+        var provider = new FileNameProvider(options.GetFileNameProvider());
         var archiver = new FileArchiver(provider, options);
 
         // Create a test file
-        File.WriteAllText(basePath, "Test content");
+        var testFilePath = provider.GetCurrentFilePath(DateTime.UtcNow.Date, 0);
+        File.WriteAllText(testFilePath, "Test content");
 
         // Archive it
-        var success = archiver.ArchiveCurrentFile(basePath);
+        var success = archiver.ArchiveCurrentFile(testFilePath);
         Assert.True(success, "Archive operation should succeed");
 
         // Check that file was moved to archive

@@ -19,6 +19,9 @@ public class AdvanceFileWriter : IDisposable
     private StreamWriter? _streamWriter;
     private long _currentFileSize;
     private bool _disposed;
+    private string _currentFilePath = string.Empty;
+    private DateTime _currentDate;
+    private int _currentIndex;
 
     /// <summary>
     /// Initializes a new instance of the AdvanceFileWriter class.
@@ -29,8 +32,13 @@ public class AdvanceFileWriter : IDisposable
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _options.Validate();
 
-        _fileNameProvider = new FileNameProvider(_options.FilePath);
+        _fileNameProvider = new FileNameProvider(_options.GetFileNameProvider());
         _fileArchiver = new FileArchiver(_fileNameProvider, _options);
+
+        // Initialize current date and index
+        _currentDate = DateTime.UtcNow.Date;
+        _currentIndex = _fileNameProvider.GetHighestIndexForDate(_currentDate) + 1;
+        if (_currentIndex < 0) _currentIndex = 0;
 
         Initialize();
     }
@@ -63,7 +71,7 @@ public class AdvanceFileWriter : IDisposable
             {
                 EnsureFileIsOpen();
 
-                // Check if we need to roll the file before writing
+                // Check if we need to roll the file before writing (date change or size limit)
                 if (ShouldRollFile(message))
                 {
                     RollFile();
@@ -174,11 +182,11 @@ public class AdvanceFileWriter : IDisposable
             Directory.CreateDirectory(logDirectory);
         }
 
-        // Initialize current file size if file exists
-        var currentFilePath = _fileNameProvider.GetCurrentFilePath();
-        if (File.Exists(currentFilePath))
+        // Initialize current file path and size
+        _currentFilePath = _fileNameProvider.GetCurrentFilePath(_currentDate, _currentIndex);
+        if (File.Exists(_currentFilePath))
         {
-            _currentFileSize = new FileInfo(currentFilePath).Length;
+            _currentFileSize = new FileInfo(_currentFilePath).Length;
         }
     }
 
@@ -189,7 +197,13 @@ public class AdvanceFileWriter : IDisposable
 
         CloseFile();
 
-        var currentFilePath = _fileNameProvider.GetCurrentFilePath();
+        // Ensure we have the current file path
+        if (string.IsNullOrEmpty(_currentFilePath))
+        {
+            _currentFilePath = _fileNameProvider.GetCurrentFilePath(_currentDate, _currentIndex);
+        }
+
+        var currentFilePath = _currentFilePath;
 
         // Open file with sharing options to allow external access
         var fileShare = _options.AllowExternalAccess
@@ -214,6 +228,13 @@ public class AdvanceFileWriter : IDisposable
 
     private bool ShouldRollFile(string message)
     {
+        // Check if date has changed (daily rolling)
+        var today = DateTime.UtcNow.Date;
+        if (today != _currentDate)
+        {
+            return true;
+        }
+
         // If size rolling is disabled, don't roll
         if (_options.MaxBytes <= 0)
             return false;
@@ -229,11 +250,34 @@ public class AdvanceFileWriter : IDisposable
         {
             CloseFile();
 
-            var currentFilePath = _fileNameProvider.GetCurrentFilePath();
-            if (File.Exists(currentFilePath))
+            var today = DateTime.UtcNow.Date;
+
+            // If date has changed, start new sequence
+            if (today != _currentDate)
             {
-                // Archive the current file
-                _fileArchiver.ArchiveCurrentFile(currentFilePath);
+                _currentDate = today;
+                _currentIndex = 0;
+            }
+            else
+            {
+                // Same date, increment index for size-based rolling
+                _currentIndex++;
+            }
+
+            // Update current file path
+            _currentFilePath = _fileNameProvider.GetCurrentFilePath(_currentDate, _currentIndex);
+
+            // Archive old files if needed
+            if (_options.MaxArchivedFiles > 0)
+            {
+                var oldFiles = _fileNameProvider.GetOldLogFiles(_options.MaxArchivedFiles);
+                foreach (var oldFile in oldFiles)
+                {
+                    if (File.Exists(oldFile))
+                    {
+                        _fileArchiver.ArchiveCurrentFile(oldFile);
+                    }
+                }
             }
 
             // Reset file size for new file
