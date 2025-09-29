@@ -9,7 +9,10 @@ Extensions and advanced features for [ZLogger](https://github.com/Cysharp/ZLogge
 ## Features Overview
 
 - **🚀 Advanced File Logger**: Enterprise-grade file logging with automatic rolling, archiving, and retention policies
-- **🎨 Console Logger with Colors**: ANSI color-coded console output with multiple formatting modes  
+- **📋 AppName Configuration**: Customizable application names in log files for easy identification
+- **🎨 Console Logger with Colors**: ANSI color-coded console output with multiple formatting modes
+- **⚡ Shorter Extension Methods**: Convenient `.Info()`, `.Warn()`, `.Error()` methods with ZLogger performance
+- **🔄 ZLogger RollingFile Style**: Date-based file naming with index rolling (`app.2025-09-29_0.log`)
 - **📦 Easy Integration**: Seamless integration with .NET's `ILoggingBuilder` infrastructure
 - **⚙️ Flexible Configuration**: Support for both code-based and `appsettings.json` configuration
 - **🔒 Thread-Safe**: All components are thread-safe for multi-threaded applications
@@ -26,6 +29,8 @@ Enterprise-grade file logging with advanced features:
 
 **Key Features:**
 - **Size-based Rolling**: Automatic file rotation based on configurable size limits
+- **AppName Configuration**: Customizable application names in log file names
+- **ZLogger RollingFile Style**: Date-based naming pattern (`{AppName}.{yyyy-MM-dd}_{index}.log`)
 - **Automatic Archiving**: Move rolled files to organized archive directories
 - **Retention Policies**: Configurable cleanup of old archived files
 - **External Process Support**: Files can be read/deleted by external processes during logging
@@ -34,23 +39,30 @@ Enterprise-grade file logging with advanced features:
 
 **Usage:**
 ```csharp
-// Basic usage
+// Basic usage - creates files like "app.2025-09-29_0.log"
 services.AddLogging(builder =>
 {
     builder.AddAdvanceFileLogger("logs/app.log");
 });
 
-// Advanced configuration
+// With AppName - creates files like "MyAPI.2025-09-29_0.log"
+services.AddLogging(builder =>
+{
+    builder.AddZLoggerRollingFile("MyAPI", 1024 * 1024); // 1MB files
+});
+
+// Advanced configuration with AppName
 services.AddLogging(builder =>
 {
     builder.AddAdvanceFileLogger(options =>
     {
-        options.FilePath = "logs/myapp.log";
+        options.AppName = "OrderService";
         options.MaxBytes = 100 * 1024 * 1024; // 100MB
         options.MaxArchivedFiles = 10;
         options.ArchiveDirectory = "archive";
         options.AllowExternalAccess = true;
     });
+    // Creates files like: OrderService.2025-09-29_0.log
 });
 ```
 
@@ -111,6 +123,86 @@ services.AddLogging(builder =>
 - **Warning**: Yellow (`\u001b[33m`)
 - **Error/Critical**: Red (`\u001b[31m`)
 
+### 🔄 ZLogger RollingFile-Style Configuration
+
+Convenient methods that follow ZLogger's rolling file conventions with date-based naming:
+
+**Key Features:**
+- **Date-based Rolling**: Files named with date and index (`AppName.yyyy-MM-dd_index.log`)
+- **AppName Integration**: Easily identify logs by application name
+- **Automatic Daily Rolling**: New files created automatically each day
+- **Size-based Sub-rolling**: Multiple files per day when size limits are exceeded
+- **ZLogger Compatibility**: Follows ZLogger's established patterns
+
+**Usage:**
+```csharp
+// Simple rolling file with custom app name
+services.AddLogging(builder =>
+{
+    builder.AddZLoggerRollingFile("WebAPI", 10 * 1024 * 1024); // 10MB files
+    // Creates: WebAPI.2025-09-29_0.log, WebAPI.2025-09-29_1.log, etc.
+});
+
+// With retention policy
+services.AddLogging(builder =>
+{
+    builder.AddZLoggerRollingFile("OrderService", 5 * 1024 * 1024, 30); // Keep 30 days
+    // Creates: OrderService.2025-09-29_0.log, archived after 30 days
+});
+
+// Custom file naming pattern with AppName
+services.AddLogging(builder =>
+{
+    builder.AddAdvanceFileLogger(options =>
+    {
+        options.AppName = "PaymentAPI";
+        options.FileNameProvider = (dt, index) =>
+            $"logs/{options.AppName}/{dt:yyyy}/{dt:MM}/{options.AppName}.{dt:yyyy-MM-dd}_{index}.log";
+        options.MaxBytes = 50 * 1024 * 1024;
+    });
+    // Creates: logs/PaymentAPI/2025/09/PaymentAPI.2025-09-29_0.log
+});
+```
+
+### ⚡ Shorter Extension Methods
+
+Convenient shorter method names with ZLogger's high-performance interpolated string handlers:
+
+**Available Methods:**
+- `.Trace($"message")` - Shorter alternative to `.LogTrace()`
+- `.Debug($"message")` - Shorter alternative to `.LogDebug()`
+- `.Info($"message")` - Shorter alternative to `.LogInformation()`
+- `.Warn($"message")` - Shorter alternative to `.LogWarning()`
+- `.Error($"message")` - Shorter alternative to `.LogError()`
+- `.Fatal($"message")` - Shorter alternative to `.LogCritical()`
+
+**Performance Benefits:**
+- Uses ZLogger's interpolated string handlers for zero-allocation logging
+- Automatic caller information (`CallerMemberName`, `CallerFilePath`, `CallerLineNumber`)
+- Better performance than traditional string formatting
+
+**Usage:**
+```csharp
+using Deneblab.ZLoggerExtensions; // Enable shorter methods
+
+// Traditional way
+logger.LogInformation("User {UserId} logged in at {LoginTime}", userId, DateTime.Now);
+logger.LogWarning("Cache miss for key {CacheKey}", cacheKey);
+logger.LogError("Failed to process order {OrderId}", orderId);
+
+// Shorter way - same performance, cleaner syntax
+logger.Info($"User {userId} logged in at {DateTime.Now}");
+logger.Warn($"Cache miss for key {cacheKey}");
+logger.Error($"Failed to process order {orderId}");
+```
+
+**Context Support:**
+```csharp
+// With context object and caller information
+logger.Info($"Processing started", context: new { OrderId = 123 });
+logger.Error($"Validation failed for {field}", context: validationContext);
+```
+
 ### 📋 Logger Comparison
 
 | Feature | Advanced File Logger | Console with Colors |
@@ -132,19 +224,30 @@ You can use both loggers together for comprehensive logging:
 ```csharp
 services.AddLogging(builder =>
 {
-    // File logging for persistence
-    builder.AddAdvanceFileLogger(options =>
-    {
-        options.FilePath = "logs/app.log";
-        options.MaxBytes = 50 * 1024 * 1024; // 50MB
-        options.MaxArchivedFiles = 7;
-    });
-    
+    // File logging for persistence with AppName
+    builder.AddZLoggerRollingFile("MyApplication", 50 * 1024 * 1024, 7);
+    // Creates: MyApplication.2025-09-29_0.log, MyApplication.2025-09-29_1.log, etc.
+
     // Console logging for development
     builder.AddZLoggerConsoleWithColors(options =>
     {
         options.LogVerbosity = LogVerbosity.TimeOnlyLocalLogLevel;
     });
+});
+
+// Or with advanced configuration
+services.AddLogging(builder =>
+{
+    builder.AddAdvanceFileLogger(options =>
+    {
+        options.AppName = "WebAPI";
+        options.MaxBytes = 50 * 1024 * 1024; // 50MB
+        options.MaxArchivedFiles = 7;
+        options.ArchiveDirectory = "logs/archive";
+    });
+    // Creates: WebAPI.2025-09-29_0.log
+
+    builder.AddZLoggerConsoleWithColors();
 });
 ```
 
@@ -170,16 +273,17 @@ Install-Package Deneblab.ZLoggerExtensions
 
 ## Quick Start
 
-### Advanced File Logger
+### Advanced File Logger with AppName
 
 ```csharp
 using Microsoft.Extensions.Logging;
-using ZLoggerExtensions.AdvanceFileLogger;
+using Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 
 var services = new ServiceCollection();
 services.AddLogging(builder =>
 {
-    builder.AddAdvanceFileLogger("logs/app.log");
+    // Creates files like: MyApp.2025-09-29_0.log
+    builder.AddZLoggerRollingFile("MyApp", 10 * 1024 * 1024); // 10MB files
 });
 
 var serviceProvider = services.BuildServiceProvider();
@@ -188,6 +292,17 @@ var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
 logger.LogInformation("Application started");
 logger.LogWarning("This is a warning");
 logger.LogError("This is an error");
+```
+
+### Traditional Advanced File Logger
+
+```csharp
+var services = new ServiceCollection();
+services.AddLogging(builder =>
+{
+    // Creates files like: app.2025-09-29_0.log (default AppName)
+    builder.AddAdvanceFileLogger("logs/app.log");
+});
 ```
 
 ### Console Logger with Colors
@@ -210,6 +325,28 @@ logger.LogWarning("This appears in yellow");
 logger.LogError("This appears in red");
 ```
 
+### Shorter Extension Methods
+
+```csharp
+using Microsoft.Extensions.Logging;
+using Deneblab.ZLoggerExtensions; // Enable shorter methods
+
+var services = new ServiceCollection();
+services.AddLogging(builder =>
+{
+    builder.AddZLoggerRollingFile("MyApp", 10 * 1024 * 1024);
+    builder.AddZLoggerConsoleWithColors();
+});
+
+var serviceProvider = services.BuildServiceProvider();
+var logger = serviceProvider.GetRequiredService<ILogger<Program>>();
+
+// Use shorter method names with interpolated strings
+logger.Info($"Application started at {DateTime.Now}");
+logger.Warn($"Warning: Memory usage is {memoryUsage}%");
+logger.Error($"Failed to process {itemId}");
+```
+
 ## Quick Reference
 
 ### Logger Methods
@@ -217,35 +354,46 @@ logger.LogError("This appears in red");
 | Logger Type | Extension Method | Primary Use Case |
 |-------------|------------------|------------------|
 | **Advanced File** | `AddAdvanceFileLogger()` | Production logging with file management |
+| **ZLogger RollingFile** | `AddZLoggerRollingFile()` | AppName-based rolling files with date pattern |
 | **Console Colors** | `AddZLoggerConsoleWithColors()` | Development and debugging with visual feedback |
+| **Shorter Extensions** | `.Info()`, `.Warn()`, `.Error()` | Concise logging with ZLogger performance |
 
 ### Common Configuration Patterns
 
 ```csharp
-// Production setup: File + Console
+// Production setup: File + Console with AppName
 services.AddLogging(builder =>
 {
-    builder.AddAdvanceFileLogger("logs/app.log", maxBytes: 100_000_000);
+    builder.AddZLoggerRollingFile("ProductionAPI", maxBytes: 100_000_000);
+    // Creates: ProductionAPI.2025-09-29_0.log
     builder.AddZLoggerConsoleWithColors();
 });
 
 // Development setup: Console only with detailed output
 services.AddLogging(builder =>
 {
-    builder.AddZLoggerConsoleWithColors(opts => 
+    builder.AddZLoggerConsoleWithColors(opts =>
         opts.LogVerbosity = LogVerbosity.DataTimeUtcLogLevelCategory);
 });
 
-// High-volume production: File with aggressive archiving
+// High-volume production: File with AppName and aggressive archiving
 services.AddLogging(builder =>
 {
     builder.AddAdvanceFileLogger(opts =>
     {
-        opts.FilePath = "logs/app.log";
+        opts.AppName = "HighVolumeService";
         opts.MaxBytes = 50_000_000; // 50MB
         opts.MaxArchivedFiles = 20;
         opts.AutoFlush = false; // Better performance
     });
+    // Creates: HighVolumeService.2025-09-29_0.log
+});
+
+// Microservice setup: Service-specific logging
+services.AddLogging(builder =>
+{
+    builder.AddZLoggerRollingFile("OrderService", 20_000_000, 14); // 20MB, 14 days
+    builder.AddZLoggerRollingFile("PaymentService", 10_000_000, 30); // 10MB, 30 days
 });
 ```
 
@@ -256,12 +404,26 @@ services.AddLogging(builder =>
 {
     builder.AddAdvanceFileLogger(options =>
     {
-        options.FilePath = "logs/myapp.log";
+        options.AppName = "MyApplicationAPI";
         options.MaxBytes = 100 * 1024 * 1024; // 100MB
         options.MaxArchivedFiles = 10;
         options.ArchiveDirectory = "archive";
         options.AllowExternalAccess = true;
         options.AutoFlush = true;
+        // Creates: MyApplicationAPI.2025-09-29_0.log
+    });
+});
+
+// Or with custom FileNameProvider
+services.AddLogging(builder =>
+{
+    builder.AddAdvanceFileLogger(options =>
+    {
+        options.AppName = "CustomApp";
+        options.FileNameProvider = (dt, index) =>
+            $"logs/{options.AppName}/{dt:yyyy}/{dt:MM}/{options.AppName}_{dt:yyyy-MM-dd}_{index:D3}.log";
+        options.MaxBytes = 50 * 1024 * 1024;
+        // Creates: logs/CustomApp/2025/09/CustomApp_2025-09-29_000.log
     });
 });
 ```
@@ -272,7 +434,7 @@ services.AddLogging(builder =>
 {
   "Logging": {
     "AdvanceFile": {
-      "FilePath": "logs/app.log",
+      "AppName": "MyWebAPI",
       "MaxBytes": 52428800,
       "MaxArchivedFiles": 7,
       "ArchiveDirectory": "archive",
@@ -282,6 +444,8 @@ services.AddLogging(builder =>
   }
 }
 ```
+
+**Note**: With AppName configuration, files will be created as `MyWebAPI.2025-09-29_0.log`, `MyWebAPI.2025-09-29_1.log`, etc.
 
 ## Advanced File Logger
 
@@ -299,7 +463,9 @@ The Advanced File Logger provides enterprise-grade file logging capabilities wit
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
-| `FilePath` | string | "logs/app.log" | Base file path for log files |
+| `AppName` | string | "app" | Application name used in file names |
+| `FileNameProvider` | Func<DateTime, int, string> | null | Custom file naming function (overrides AppName pattern) |
+| `FilePath` | string | "logs/app.log" | Base file path (used with legacy configuration) |
 | `MaxBytes` | long | 50MB | File size limit for rolling (0 disables) |
 | `MaxArchivedFiles` | int | 7 | Maximum archived files to retain |
 | `ArchiveDirectory` | string | "archive" | Archive directory name |
@@ -311,11 +477,16 @@ The Advanced File Logger provides enterprise-grade file logging capabilities wit
 
 ### File Naming Convention
 
-The AdvanceFileLogger follows ZLogger's rolling file naming convention:
+The AdvanceFileLogger uses ZLogger's rolling file naming convention with date-based patterns:
 
-- Current file: `app.log`
-- Rolled files: `app_20231225_143045.log`
-- Archived files: `archive/app_20231225_143045.log`
+**Default AppName Pattern:**
+- Current files: `{AppName}.{yyyy-MM-dd}_0.log`, `{AppName}.{yyyy-MM-dd}_1.log`
+- Example: `MyApp.2025-09-29_0.log`, `MyApp.2025-09-29_1.log`
+- Archived files: `archive/{AppName}.{yyyy-MM-dd}_0.log`
+
+**Daily Rolling:**
+- New day creates new files: `MyApp.2025-09-30_0.log`
+- Size-based rolling creates: `MyApp.2025-09-29_0.log`, `MyApp.2025-09-29_1.log`
 
 ## Console Logger with Colors
 
