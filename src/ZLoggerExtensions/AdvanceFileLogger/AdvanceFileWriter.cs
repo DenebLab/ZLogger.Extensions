@@ -37,8 +37,21 @@ public class AdvanceFileWriter : IDisposable
 
         // Initialize current date and index
         _currentDate = DateTime.UtcNow.Date;
-        _currentIndex = _fileNameProvider.GetHighestIndexForDate(_currentDate) + 1;
+        _currentIndex = _fileNameProvider.GetHighestIndexForDate(_currentDate);
         if (_currentIndex < 0) _currentIndex = 0;
+
+        // Check if existing file can be reused (has space for more logs)
+        var potentialFilePath = _fileNameProvider.GetCurrentFilePath(_currentDate, _currentIndex);
+        if (File.Exists(potentialFilePath))
+        {
+            var fileInfo = new FileInfo(potentialFilePath);
+            // If file exists and is at or over size limit, increment to create new file
+            if (_options.MaxBytes > 0 && fileInfo.Length >= _options.MaxBytes)
+            {
+                _currentIndex++;
+            }
+            // Otherwise, reuse existing file (keep current index)
+        }
 
         Initialize();
     }

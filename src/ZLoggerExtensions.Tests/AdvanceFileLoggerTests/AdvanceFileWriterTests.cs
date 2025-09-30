@@ -304,6 +304,89 @@ public class AdvanceFileWriterTests : IDisposable
         File.Exists(expectedFile).Should().BeTrue();
     }
 
+    [Fact]
+    public void Constructor_WithExistingFileUnderSizeLimit_ReusesSameFile()
+    {
+        // Arrange
+        var options = CreateTestOptions("reuse_test.log");
+        options.MaxBytes = 1024; // 1KB limit
+        var expectedFile = options.GetFileNameProvider()(DateTime.Today, 0);
+
+        // Create initial file with some content (under size limit)
+        using (var writer1 = new AdvanceFileWriter(options))
+        {
+            writer1.Write("First message");
+            writer1.Flush();
+        }
+
+        var initialSize = new FileInfo(expectedFile).Length;
+        initialSize.Should().BeLessThan(options.MaxBytes, "Initial file should be under size limit");
+
+        // Act - Create new writer instance
+        using (var writer2 = new AdvanceFileWriter(options))
+        {
+            writer2.Write("Second message");
+            writer2.Flush();
+        }
+
+        // Assert
+        File.Exists(expectedFile).Should().BeTrue("Should reuse the same file");
+        var finalContent = File.ReadAllText(expectedFile);
+        finalContent.Should().Contain("First message", "Should contain first message");
+        finalContent.Should().Contain("Second message", "Should contain second message (appended)");
+
+        // Should not create index 1 file
+        var file1 = options.GetFileNameProvider()(DateTime.Today, 1);
+        File.Exists(file1).Should().BeFalse("Should not create new file with index 1");
+    }
+
+    [Fact]
+    public void Constructor_WithExistingFileAtSizeLimit_CreatesNewFile()
+    {
+        // Arrange
+        var options = CreateTestOptions("newfile_test.log");
+        options.MaxBytes = 50; // Very small limit
+        var file0 = options.GetFileNameProvider()(DateTime.Today, 0);
+        var file1 = options.GetFileNameProvider()(DateTime.Today, 1);
+        var file2 = options.GetFileNameProvider()(DateTime.Today, 2);
+
+        // Create initial file and fill it to exceed size limit
+        // The file will roll during the write operation
+        using (var writer1 = new AdvanceFileWriter(options))
+        {
+            writer1.Write("This is a longer message that will exceed the 50 byte limit for sure");
+            writer1.Flush();
+        }
+
+        // After the first writer, file0 or file1 should exist (depending on rolling)
+        var hasFile0 = File.Exists(file0);
+        var hasFile1 = File.Exists(file1);
+        (hasFile0 || hasFile1).Should().BeTrue("At least one file should exist after first write");
+
+        // Get the highest index file that exists
+        int lastIndex = hasFile1 ? 1 : 0;
+        var lastFile = hasFile1 ? file1 : file0;
+        var lastFileSize = new FileInfo(lastFile).Length;
+
+        // Manually create a file at size limit to test initialization logic
+        var testFile = options.GetFileNameProvider()(DateTime.Today, lastIndex + 1);
+        File.WriteAllText(testFile, new string('x', (int)options.MaxBytes)); // Exactly at limit
+
+        // Act - Create new writer instance (should detect file at limit and create next index)
+        using (var writer2 = new AdvanceFileWriter(options))
+        {
+            writer2.Write("New file message");
+            writer2.Flush();
+        }
+
+        // Assert - Should create a new file with incremented index
+        var nextFile = options.GetFileNameProvider()(DateTime.Today, lastIndex + 2);
+        File.Exists(nextFile).Should().BeTrue("Should create new file with incremented index");
+
+        var contentNext = File.ReadAllText(nextFile);
+        contentNext.Should().Contain("New file message", "New file should contain new message");
+    }
+
     private AdvanceFileLoggerOptions CreateTestOptions(string fileName)
     {
         return new AdvanceFileLoggerOptions
