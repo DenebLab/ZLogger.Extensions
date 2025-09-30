@@ -39,14 +39,14 @@ public class LoggingBuilderExtensionsTests : IDisposable
     {
         // Arrange
         var services = new ServiceCollection();
-        var testFilePath = Path.Combine(_testDirectory, "configured.log");
 
         // Act
         services.AddLogging(builder =>
         {
             builder.AddAdvanceFileLogger(options =>
             {
-                options.FilePath = testFilePath;
+                options.LogDirPath = _testDirectory;
+                options.AppName = "configured";
                 options.MaxBytes = 2048;
                 options.MaxArchivedFiles = 10;
             });
@@ -58,106 +58,6 @@ public class LoggingBuilderExtensionsTests : IDisposable
         // Assert
         logger.Should().NotBeNull();
         serviceProvider.Dispose();
-    }
-
-    [Fact]
-    public void AddAdvanceFileLogger_WithFilePath_ConfiguresCorrectPath()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        var testFilePath = Path.Combine(_testDirectory, "path_test.log");
-
-        // Act
-        services.AddLogging(builder => builder.AddAdvanceFileLogger(testFilePath));
-        var serviceProvider = services.BuildServiceProvider();
-        var logger = serviceProvider.GetRequiredService<ILogger<LoggingBuilderExtensionsTests>>();
-
-        logger.LogInformation("Test message");
-        Thread.Sleep(100); // Allow time for async operations
-
-        // Assert
-        serviceProvider.Dispose();
-        // With new API, files use date+index pattern, so check for the expected pattern
-        var today = DateTime.Today;
-        var expectedFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
-        File.Exists(expectedFile).Should().BeTrue();
-    }
-
-    [Fact]
-    public void AddAdvanceFileLogger_WithFilePathAndMaxBytes_ConfiguresBoth()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        var testFilePath = Path.Combine(_testDirectory, "size_config_test.log");
-
-        // Act
-        services.AddLogging(builder => builder.AddAdvanceFileLogger(testFilePath, 1024));
-        var serviceProvider = services.BuildServiceProvider();
-        var logger = serviceProvider.GetRequiredService<ILogger<LoggingBuilderExtensionsTests>>();
-
-        logger.LogInformation("Test message with size configuration");
-        Thread.Sleep(100);
-
-        // Assert
-        serviceProvider.Dispose();
-        // With new API, files use date+index pattern
-        var today = DateTime.Today;
-        var expectedFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
-        File.Exists(expectedFile).Should().BeTrue();
-    }
-
-    [Fact]
-    public void AddAdvanceFileLogger_WithFullConfiguration_ConfiguresAllOptions()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        var testFilePath = Path.Combine(_testDirectory, "full_config_test.log");
-
-        // Act
-        services.AddLogging(builder =>
-        {
-            builder.AddAdvanceFileLogger(testFilePath, 2048, 15);
-        });
-
-        var serviceProvider = services.BuildServiceProvider();
-        var logger = serviceProvider.GetRequiredService<ILogger<LoggingBuilderExtensionsTests>>();
-
-        logger.LogInformation("Test message with full configuration");
-        Thread.Sleep(100);
-
-        // Assert
-        serviceProvider.Dispose();
-        // With new API, files use date+index pattern
-        var today = DateTime.Today;
-        var expectedFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
-        File.Exists(expectedFile).Should().BeTrue();
-    }
-
-    [Fact]
-    public void AddAdvanceFileLogger_WithCompleteConfiguration_ConfiguresArchiveDirectory()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        var testFilePath = Path.Combine(_testDirectory, "archive_config_test.log");
-
-        // Act
-        services.AddLogging(builder =>
-        {
-            builder.AddAdvanceFileLogger(testFilePath, 2048, 15, "custom_archive");
-        });
-
-        var serviceProvider = services.BuildServiceProvider();
-        var logger = serviceProvider.GetRequiredService<ILogger<LoggingBuilderExtensionsTests>>();
-
-        logger.LogInformation("Test message with archive configuration");
-        Thread.Sleep(100);
-
-        // Assert
-        serviceProvider.Dispose();
-        // With new API, files use date+index pattern
-        var today = DateTime.Today;
-        var expectedFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
-        File.Exists(expectedFile).Should().BeTrue();
     }
 
     [Fact]
@@ -198,9 +98,12 @@ public class LoggingBuilderExtensionsTests : IDisposable
     {
         // Arrange
         var services = new ServiceCollection();
-        var testFilePath = Path.Combine(_testDirectory, "multiple_loggers_test.log");
 
-        services.AddLogging(builder => builder.AddAdvanceFileLogger(testFilePath));
+        services.AddLogging(builder => builder.AddAdvanceFileLogger(options =>
+        {
+            options.LogDirPath = _testDirectory;
+            options.AppName = "multilogger";
+        }));
         var serviceProvider = services.BuildServiceProvider();
 
         // Act - Create multiple loggers
@@ -218,7 +121,7 @@ public class LoggingBuilderExtensionsTests : IDisposable
         serviceProvider.Dispose();
         // With new API, files use date+index pattern
         var today = DateTime.Today;
-        var expectedFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
+        var expectedFile = Path.Combine(_testDirectory, $"multilogger.{today:yyyy-MM-dd}.00.log");
         File.Exists(expectedFile).Should().BeTrue();
 
         var content = File.ReadAllText(expectedFile);
@@ -250,50 +153,14 @@ public class LoggingBuilderExtensionsTests : IDisposable
     {
         // Arrange
         var services = new ServiceCollection();
-        var testFilePath = Path.Combine(_testDirectory, "service_collection_test.log");
 
         // Act
         services.AddAdvanceFileLogger(options =>
         {
-            options.FilePath = testFilePath;
+            options.LogDirPath = _testDirectory;
+            options.AppName = "servicecollection";
             options.MaxBytes = 4096;
         });
-
-        // Assert
-        var serviceProvider = services.BuildServiceProvider();
-        var loggerProviders = serviceProvider.GetServices<ILoggerProvider>();
-        loggerProviders.Should().ContainSingle(p => p is AdvanceFileLoggerProvider);
-
-        serviceProvider.Dispose();
-    }
-
-    [Fact]
-    public void ServiceCollectionExtensions_AddAdvanceFileLogger_WithFilePath_ConfiguresPath()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        var testFilePath = Path.Combine(_testDirectory, "service_path_test.log");
-
-        // Act
-        services.AddAdvanceFileLogger(testFilePath);
-
-        // Assert
-        var serviceProvider = services.BuildServiceProvider();
-        var loggerProviders = serviceProvider.GetServices<ILoggerProvider>();
-        loggerProviders.Should().ContainSingle(p => p is AdvanceFileLoggerProvider);
-
-        serviceProvider.Dispose();
-    }
-
-    [Fact]
-    public void ServiceCollectionExtensions_AddAdvanceFileLogger_WithFilePathAndMaxBytes_ConfiguresBoth()
-    {
-        // Arrange
-        var services = new ServiceCollection();
-        var testFilePath = Path.Combine(_testDirectory, "service_size_test.log");
-
-        // Act
-        services.AddAdvanceFileLogger(testFilePath, 8192);
 
         // Assert
         var serviceProvider = services.BuildServiceProvider();
@@ -316,13 +183,16 @@ public class LoggingBuilderExtensionsTests : IDisposable
     {
         // Arrange
         var services = new ServiceCollection();
-        var testFilePath = Path.Combine(_testDirectory, "integration_test.log");
 
         // Act - Add multiple logging providers
         services.AddLogging(builder =>
         {
             builder.AddConsole();
-            builder.AddAdvanceFileLogger(testFilePath);
+            builder.AddAdvanceFileLogger(options =>
+            {
+                options.LogDirPath = _testDirectory;
+                options.AppName = "integration";
+            });
             builder.AddDebug();
         });
 
@@ -340,7 +210,7 @@ public class LoggingBuilderExtensionsTests : IDisposable
         serviceProvider.Dispose();
         // With new API, files use date+index pattern
         var today = DateTime.Today;
-        var expectedFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
+        var expectedFile = Path.Combine(_testDirectory, $"integration.{today:yyyy-MM-dd}.00.log");
         File.Exists(expectedFile).Should().BeTrue();
     }
 

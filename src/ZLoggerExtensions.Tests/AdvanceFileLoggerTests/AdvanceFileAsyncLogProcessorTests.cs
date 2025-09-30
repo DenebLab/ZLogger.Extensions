@@ -266,10 +266,10 @@ public class AdvanceFileAsyncLogProcessorTests : IDisposable
 
     private AdvanceFileLoggerOptions CreateTestOptions(string fileName)
     {
-        var fullPath = Path.IsPathRooted(fileName) ? fileName : Path.Combine(_testDirectory, fileName);
         return new AdvanceFileLoggerOptions
         {
-            FilePath = fullPath,
+            LogDirPath = _testDirectory,
+            AppName = Path.GetFileNameWithoutExtension(fileName),
             MaxBytes = 1024 * 1024, // 1MB default
             MaxArchivedFiles = 5,
             ArchiveDirectory = "archive",

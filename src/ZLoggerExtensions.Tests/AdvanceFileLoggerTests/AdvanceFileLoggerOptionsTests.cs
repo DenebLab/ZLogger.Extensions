@@ -15,7 +15,8 @@ public class AdvanceFileLoggerOptionsTests
         var options = new AdvanceFileLoggerOptions();
 
         // Assert
-        options.FilePath.Should().Be("logs/app.log");
+        options.LogDirPath.Should().Be("logs");
+        options.AppName.Should().Be("app");
         options.MaxBytes.Should().Be(50 * 1024 * 1024); // 50 MB
         options.ArchiveDirectory.Should().Be("archive");
         options.MaxArchivedFiles.Should().Be(7);
@@ -32,7 +33,7 @@ public class AdvanceFileLoggerOptionsTests
         // Arrange
         var options = new AdvanceFileLoggerOptions
         {
-            FilePath = "test.log",
+            LogDirPath = "testlogs",
             MaxBytes = 1024,
             MaxArchivedFiles = 5,
             ArchiveDirectory = "archive",
@@ -87,7 +88,8 @@ public class AdvanceFileLoggerOptionsTests
         var customEncoding = Encoding.ASCII;
 
         // Act
-        options.FilePath = "custom/path.log";
+        options.LogDirPath = "custom/path";
+        options.AppName = "myapp";
         options.MaxBytes = 1000000;
         options.ArchiveDirectory = "custom_archive";
         options.MaxArchivedFiles = 15;
@@ -98,7 +100,8 @@ public class AdvanceFileLoggerOptionsTests
         options.AllowExternalAccess = false;
 
         // Assert
-        options.FilePath.Should().Be("custom/path.log");
+        options.LogDirPath.Should().Be("custom/path");
+        options.AppName.Should().Be("myapp");
         options.MaxBytes.Should().Be(1000000);
         options.ArchiveDirectory.Should().Be("custom_archive");
         options.MaxArchivedFiles.Should().Be(15);

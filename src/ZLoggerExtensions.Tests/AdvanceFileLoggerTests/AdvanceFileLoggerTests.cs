@@ -27,10 +27,10 @@ public class AdvanceFileLoggerTests
     /// </summary>
     public void TestBasicLogging()
     {
-        var logFilePath = Path.Combine(_testDirectory, "test.log");
         var options = new AdvanceFileLoggerOptions
         {
-            FilePath = logFilePath,
+            LogDirPath = _testDirectory,
+            AppName = "test",
             MaxBytes = 0 // Disable rolling for this test
         };
 
@@ -40,9 +40,10 @@ public class AdvanceFileLoggerTests
         writer.Write("Test message 2");
         writer.Flush();
 
-        Assert.True(File.Exists(logFilePath), "Log file should exist");
+        var logFiles = Directory.GetFiles(_testDirectory, "test.*.log");
+        Assert.True(logFiles.Length > 0, "Log file should exist");
 
-        var content = File.ReadAllText(logFilePath);
+        var content = File.ReadAllText(logFiles[0]);
         Assert.Contains("Test message 1", content);
         Assert.Contains("Test message 2", content);
     }
@@ -52,10 +53,10 @@ public class AdvanceFileLoggerTests
     /// </summary>
     public void TestFileRolling()
     {
-        var logFilePath = Path.Combine(_testDirectory, "rolling.log");
         var options = new AdvanceFileLoggerOptions
         {
-            FilePath = logFilePath,
+            LogDirPath = _testDirectory,
+            AppName = "rolling",
             MaxBytes = 100 // Small size to trigger rolling
         };
 
@@ -81,10 +82,10 @@ public class AdvanceFileLoggerTests
     /// </summary>
     public void TestArchiveRetention()
     {
-        var logFilePath = Path.Combine(_testDirectory, "retention.log");
         var options = new AdvanceFileLoggerOptions
         {
-            FilePath = logFilePath,
+            LogDirPath = _testDirectory,
+            AppName = "retention",
             MaxBytes = 50, // Very small size
             MaxArchivedFiles = 3 // Keep only 3 archived files
         };
@@ -173,12 +174,15 @@ public class AdvanceFileLoggerTests
     /// </summary>
     public void TestProviderIntegration()
     {
-        var logFilePath = Path.Combine(_testDirectory, "provider.log");
-
         var services = new ServiceCollection();
         services.AddLogging(builder =>
         {
-            builder.AddAdvanceFileLogger(logFilePath, maxBytes: 1024);
+            builder.AddAdvanceFileLogger(options =>
+            {
+                options.LogDirPath = _testDirectory;
+                options.AppName = "provider";
+                options.MaxBytes = 1024;
+            });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -194,9 +198,10 @@ public class AdvanceFileLoggerTests
         // Dispose to ensure flush
         serviceProvider.Dispose();
 
-        Assert.True(File.Exists(logFilePath), "Log file should exist");
+        var logFiles = Directory.GetFiles(_testDirectory, "provider.*.log");
+        Assert.True(logFiles.Length > 0, "Log file should exist");
 
-        var content = File.ReadAllText(logFilePath);
+        var content = File.ReadAllText(logFiles[0]);
         Assert.Contains("Test information message", content);
         Assert.Contains("Test warning message", content);
         Assert.Contains("Test error message", content);
@@ -207,10 +212,10 @@ public class AdvanceFileLoggerTests
     /// </summary>
     public void TestExternalFileAccess()
     {
-        var logFilePath = Path.Combine(_testDirectory, "external.log");
         var options = new AdvanceFileLoggerOptions
         {
-            FilePath = logFilePath,
+            LogDirPath = _testDirectory,
+            AppName = "external",
             AllowExternalAccess = true
         };
 
@@ -220,10 +225,11 @@ public class AdvanceFileLoggerTests
         writer.Flush();
 
         // Try to read the file while it's being written to
-        Assert.True(File.Exists(logFilePath), "Log file should exist");
+        var logFiles = Directory.GetFiles(_testDirectory, "external.*.log");
+        Assert.True(logFiles.Length > 0, "Log file should exist");
 
         // This should not throw if external access is properly configured
-        var content = File.ReadAllText(logFilePath);
+        var content = File.ReadAllText(logFiles[0]);
         Assert.Contains("Initial message", content);
 
         // Try to delete the file (should be possible with external access)
@@ -231,7 +237,7 @@ public class AdvanceFileLoggerTests
         try
         {
             var tempCopy = Path.Combine(_testDirectory, "temp_copy.log");
-            File.Copy(logFilePath, tempCopy);
+            File.Copy(logFiles[0], tempCopy);
             Assert.True(File.Exists(tempCopy), "Should be able to copy the log file");
         }
         catch (Exception)
@@ -248,7 +254,7 @@ public class AdvanceFileLoggerTests
         var options = new AdvanceFileLoggerOptions();
 
         // Test valid configuration
-        options.FilePath = "test.log";
+        options.LogDirPath = "testlogs";
         options.MaxBytes = 1024;
         options.MaxArchivedFiles = 5;
 
@@ -256,10 +262,10 @@ public class AdvanceFileLoggerTests
         options.Validate();
 
         // Test invalid configurations
-        options.FilePath = "";
+        options.LogDirPath = "";
         Assert.Throws<ArgumentException>(() => options.Validate());
 
-        options.FilePath = "test.log";
+        options.LogDirPath = "testlogs";
         options.MaxBytes = -1;
         Assert.Throws<ArgumentException>(() => options.Validate());
 

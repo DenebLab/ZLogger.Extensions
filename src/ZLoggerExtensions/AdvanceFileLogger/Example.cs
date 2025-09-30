@@ -20,7 +20,12 @@ public class Example
         var services = new ServiceCollection();
         services.AddLogging(builder =>
         {
-            builder.AddAdvanceFileLogger("logs/example.log", maxBytes: 1024 * 1024); // 1MB
+            builder.AddAdvanceFileLogger(options =>
+            {
+                options.LogDirPath = "logs";
+                options.AppName = "example";
+                options.MaxBytes = 1024 * 1024; // 1MB
+            });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -56,7 +61,8 @@ public class Example
         {
             builder.AddAdvanceFileLogger(options =>
             {
-                options.FilePath = "logs/advanced.log";
+                options.LogDirPath = "logs";
+                options.AppName = "advanced";
                 options.MaxBytes = 5 * 1024 * 1024; // 5MB before rolling
                 options.MaxArchivedFiles = 10; // Keep 10 archived files
                 options.ArchiveDirectory = "archived_logs";
@@ -92,7 +98,11 @@ public class Example
         var services = new ServiceCollection();
         services.AddLogging(builder =>
         {
-            builder.AddAdvanceFileLogger("logs/scoped.log");
+            builder.AddAdvanceFileLogger(options =>
+            {
+                options.LogDirPath = "logs";
+                options.AppName = "scoped";
+            });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -127,7 +137,11 @@ public class Example
         var services = new ServiceCollection();
         services.AddLogging(builder =>
         {
-            builder.AddAdvanceFileLogger("logs/multithreaded.log");
+            builder.AddAdvanceFileLogger(options =>
+            {
+                options.LogDirPath = "logs";
+                options.AppName = "multithreaded";
+            });
         });
 
         var serviceProvider = services.BuildServiceProvider();
@@ -168,7 +182,8 @@ public class Example
         {
             builder.AddAdvanceFileLogger(options =>
             {
-                options.FilePath = "logs/zlogger.log";
+                options.LogDirPath = "logs";
+                options.AppName = "zlogger";
                 options.MaxBytes = 1024 * 1024; // 1MB
                 options.AllowExternalAccess = true;
             });

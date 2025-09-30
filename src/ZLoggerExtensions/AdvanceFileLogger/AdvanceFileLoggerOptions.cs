@@ -9,8 +9,9 @@ namespace Deneblab.ZLoggerExtensions.AdvanceFileLogger;
 public class AdvanceFileLoggerOptions
 {
     /// <summary>
-    /// Gets or sets the file name provider function that generates file names based on date and index.
-    /// If null, uses the FilePath property for backward compatibility.
+    /// Gets or sets the file name provider function that generates file names (without path) based on date and index.
+    /// The function should return only the filename, not the full path.
+    /// If null, uses the default provider that generates files in format: {AppName}.{yyyy-MM-dd}.{index:D2}.log
     /// </summary>
     public Func<DateTime, int, string>? FileNameProvider { get; set; }
     /// <summary>
@@ -19,10 +20,9 @@ public class AdvanceFileLoggerOptions
     public string AppName { get; set; } = "app";
 
     /// <summary>
-    /// Gets or sets the base file path for log files.
-    /// This property is used when FileNameProvider is null for backward compatibility.
+    /// Gets or sets the directory path where log files will be stored.
     /// </summary>
-    public string FilePath { get; set; } = "logs/app.log";
+    public string LogDirPath { get; set; } = "logs";
 
     /// <summary>
     /// Roll when file exceeds this size (0 disables size rolling).
@@ -65,25 +65,20 @@ public class AdvanceFileLoggerOptions
     public bool AllowExternalAccess { get; set; } = true;
 
     /// <summary>
-    /// Gets the effective file name provider, either the custom one or a default based on FilePath.
+    /// Gets the effective file name provider that returns full paths by combining LogDirPath with filename.
     /// </summary>
-    /// <returns>The file name provider function.</returns>
+    /// <returns>The file name provider function that returns full paths.</returns>
     public Func<DateTime, int, string> GetFileNameProvider()
     {
         if (FileNameProvider != null)
-            return FileNameProvider;
-
-        // Default provider for backward compatibility - creates ZLogger RollingFile style names
-        var directory = Path.GetDirectoryName(FilePath) ?? string.Empty;
-        var extension = Path.GetExtension(FilePath);
-        if (string.IsNullOrEmpty(extension))
-            extension = ".log";
-
-        return (date, index) =>
         {
-            var fileName = $"{AppName}.{date:yyyy-MM-dd}_{index}{extension}";
-            return string.IsNullOrEmpty(directory) ? fileName : Path.Combine(directory, fileName);
-        };
+            // Wrap custom provider to combine with LogDirPath
+            return (date, index) => Path.Combine(LogDirPath, FileNameProvider(date, index));
+        }
+
+        // Default provider - creates ZLogger RollingFile style names: {AppName}.{yyyy-MM-dd}.{index:D2}.log
+        return (date, index) =>
+            Path.Combine(LogDirPath, $"{AppName}.{date:yyyy-MM-dd}.{index:D2}.log");
     }
 
     /// <summary>
@@ -92,8 +87,8 @@ public class AdvanceFileLoggerOptions
     /// <exception cref="ArgumentException">Thrown when configuration is invalid.</exception>
     public void Validate()
     {
-        if (FileNameProvider == null && string.IsNullOrWhiteSpace(FilePath))
-            throw new ArgumentException("Either FileNameProvider must be set or FilePath cannot be null or empty.", nameof(FilePath));
+        if (string.IsNullOrWhiteSpace(LogDirPath))
+            throw new ArgumentException("LogDirPath cannot be null or empty.", nameof(LogDirPath));
 
         if (string.IsNullOrWhiteSpace(AppName))
             throw new ArgumentException("AppName cannot be null or empty.", nameof(AppName));
