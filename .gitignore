@@ -30,6 +30,7 @@ csx/
 obj/
 rcf/
 
+nul
 
 src/build/tools/*
 
