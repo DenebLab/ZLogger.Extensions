@@ -62,7 +62,7 @@ public class IntegrationTests : IDisposable
             var archivedFiles = Directory.GetFiles(archiveDir);
             if (archivedFiles.Any())
             {
-                archivedFiles.Length.Should().BeLessOrEqualTo(3); // Respect retention policy
+                archivedFiles.Length.Should().BeLessThanOrEqualTo(3); // Respect retention policy
             }
         }
     }
@@ -373,7 +373,7 @@ public class IntegrationTests : IDisposable
         if (Directory.Exists(archiveDir))
         {
             var archivedFiles = Directory.GetFiles(archiveDir);
-            archivedFiles.Length.Should().BeLessOrEqualTo(2); // Should respect retention policy
+            archivedFiles.Length.Should().BeLessThanOrEqualTo(2); // Should respect retention policy
         }
 
         var today = DateTime.Today;
