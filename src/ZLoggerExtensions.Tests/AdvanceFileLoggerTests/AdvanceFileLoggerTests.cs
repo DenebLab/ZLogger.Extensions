@@ -208,15 +208,15 @@ public class AdvanceFileLoggerTests
     }
 
     /// <summary>
-    /// Test external file access capability.
+    /// Test development mode file access capability.
     /// </summary>
-    public void TestExternalFileAccess()
+    public void TestDevelopmentModeFileAccess()
     {
         var options = new AdvanceFileLoggerOptions
         {
             LogDirPath = _testDirectory,
             AppName = "external",
-            AllowExternalAccess = true
+            Mode = LoggerMode.Development
         };
 
         using var writer = new AdvanceFileWriter(options);

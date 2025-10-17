@@ -66,7 +66,7 @@ public class Example
                 options.MaxBytes = 5 * 1024 * 1024; // 5MB before rolling
                 options.MaxArchivedFiles = 10; // Keep 10 archived files
                 options.ArchiveDirectory = "archived_logs";
-                options.AllowExternalAccess = true; // Allow external tools to read files
+                options.Mode = LoggerMode.Production; // Production mode for maximum performance
                 options.AutoFlush = true; // Immediate disk write
                 options.CreateDirectories = true; // Auto-create log directories
             });
@@ -185,7 +185,7 @@ public class Example
                 options.LogDirPath = "logs";
                 options.AppName = "zlogger";
                 options.MaxBytes = 1024 * 1024; // 1MB
-                options.AllowExternalAccess = true;
+                options.Mode = LoggerMode.Development; // Development mode for file accessibility
             });
         });
 

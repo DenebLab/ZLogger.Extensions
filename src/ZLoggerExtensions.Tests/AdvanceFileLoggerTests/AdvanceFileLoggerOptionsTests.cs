@@ -24,7 +24,7 @@ public class AdvanceFileLoggerOptionsTests
         options.Encoding.Should().Be(Encoding.UTF8);
         options.AutoFlush.Should().BeTrue();
         options.BufferSize.Should().Be(4096);
-        options.AllowExternalAccess.Should().BeTrue();
+        options.Mode.Should().Be(LoggerMode.Production);
     }
 
     [Fact]
@@ -97,7 +97,7 @@ public class AdvanceFileLoggerOptionsTests
         options.Encoding = customEncoding;
         options.AutoFlush = false;
         options.BufferSize = 8192;
-        options.AllowExternalAccess = false;
+        options.Mode = LoggerMode.Development;
 
         // Assert
         options.LogDirPath.Should().Be("custom/path");
@@ -109,6 +109,29 @@ public class AdvanceFileLoggerOptionsTests
         options.Encoding.Should().Be(customEncoding);
         options.AutoFlush.Should().BeFalse();
         options.BufferSize.Should().Be(8192);
-        options.AllowExternalAccess.Should().BeFalse();
+        options.Mode.Should().Be(LoggerMode.Development);
+    }
+
+    [Fact]
+    public void Mode_DefaultsToProduction()
+    {
+        // Arrange & Act
+        var options = new AdvanceFileLoggerOptions();
+
+        // Assert
+        options.Mode.Should().Be(LoggerMode.Production);
+    }
+
+    [Fact]
+    public void Mode_CanBeSetToDevelopment()
+    {
+        // Arrange
+        var options = new AdvanceFileLoggerOptions();
+
+        // Act
+        options.Mode = LoggerMode.Development;
+
+        // Assert
+        options.Mode.Should().Be(LoggerMode.Development);
     }
 }

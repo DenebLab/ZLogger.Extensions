@@ -221,12 +221,12 @@ public class AdvanceFileAsyncLogProcessorTests : IDisposable
     }
 
     [Fact]
-    public void Processor_WithExternalAccessConfiguration_HandlesCorrectly()
+    public void Processor_WithDevelopmentModeConfiguration_HandlesCorrectly()
     {
         // Arrange
-        var logFile = Path.Combine(_testDirectory, "external_access_test.log");
+        var logFile = Path.Combine(_testDirectory, "development_mode_test.log");
         var options = CreateTestOptions(logFile);
-        options.AllowExternalAccess = true;
+        options.Mode = LoggerMode.Development;
 
         // Act & Assert - Should not throw during construction
         using var processor = new AdvanceFileAsyncLogProcessor(options);
@@ -275,7 +275,7 @@ public class AdvanceFileAsyncLogProcessorTests : IDisposable
             ArchiveDirectory = "archive",
             CreateDirectories = true,
             AutoFlush = true,
-            AllowExternalAccess = true
+            Mode = LoggerMode.Production
         };
     }
 

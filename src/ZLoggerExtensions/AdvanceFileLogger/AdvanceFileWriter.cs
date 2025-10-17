@@ -103,6 +103,12 @@ public class AdvanceFileWriter : IDisposable
                 {
                     _streamWriter?.Flush();
                 }
+
+                // In Development mode, close the file after each write to allow external access
+                if (_options.Mode == LoggerMode.Development)
+                {
+                    CloseFile();
+                }
             }
             catch (Exception)
             {
@@ -120,6 +126,12 @@ public class AdvanceFileWriter : IDisposable
                     if (_options.AutoFlush)
                     {
                         _streamWriter?.Flush();
+                    }
+
+                    // In Development mode, close the file after each write to allow external access
+                    if (_options.Mode == LoggerMode.Development)
+                    {
+                        CloseFile();
                     }
                 }
                 catch (Exception)
@@ -218,10 +230,12 @@ public class AdvanceFileWriter : IDisposable
 
         var currentFilePath = _currentFilePath;
 
-        // Open file with sharing options to allow external access
-        var fileShare = _options.AllowExternalAccess
-            ? FileShare.Read | FileShare.Delete
-            : FileShare.Read;
+        // Open file with sharing options based on logger mode
+        // Development mode: Allow ReadWrite access for external processes to edit/delete files
+        // Production mode: Allow Read access only for external processes
+        var fileShare = _options.Mode == LoggerMode.Development
+            ? FileShare.ReadWrite | FileShare.Delete
+            : FileShare.Read | FileShare.Delete;
 
         _fileStream = new FileStream(
             currentFilePath,

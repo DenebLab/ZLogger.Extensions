@@ -60,9 +60,11 @@ public class AdvanceFileLoggerOptions
     public int BufferSize { get; set; } = 4096;
 
     /// <summary>
-    /// Gets or sets whether to allow external processes to read/delete log files during logging.
+    /// Gets or sets the logger mode that determines file access behavior.
+    /// Production mode (default) keeps the file handle open for maximum performance.
+    /// Development mode closes the file after each write to allow external file manipulation.
     /// </summary>
-    public bool AllowExternalAccess { get; set; } = true;
+    public LoggerMode Mode { get; set; } = LoggerMode.Production;
 
     /// <summary>
     /// Gets the effective file name provider that returns full paths by combining LogDirPath with filename.

@@ -398,7 +398,7 @@ public class AdvanceFileWriterTests : IDisposable
             ArchiveDirectory = "archive",
             CreateDirectories = true,
             AutoFlush = true,
-            AllowExternalAccess = true
+            Mode = LoggerMode.Production
         };
     }
 

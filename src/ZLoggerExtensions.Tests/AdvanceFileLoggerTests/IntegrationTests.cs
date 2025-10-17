@@ -16,6 +16,18 @@ public class IntegrationTests : IDisposable
         Directory.CreateDirectory(_testDirectory);
     }
 
+    public void Dispose()
+    {
+        try
+        {
+            if (Directory.Exists(_testDirectory)) Directory.Delete(_testDirectory, true);
+        }
+        catch
+        {
+            // Ignore cleanup errors
+        }
+    }
+
     [Fact]
     public void CompleteLoggingWorkflow_WithRollingAndArchiving_WorksCorrectly()
     {
@@ -26,7 +38,8 @@ public class IntegrationTests : IDisposable
         {
             builder.AddAdvanceFileLogger(options =>
             {
-                options.FileNameProvider = (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
+                options.FileNameProvider =
+                    (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
                 options.MaxBytes = 200; // Small size to force rolling
                 options.MaxArchivedFiles = 3;
                 options.ArchiveDirectory = "archive";
@@ -38,9 +51,10 @@ public class IntegrationTests : IDisposable
         var logger = serviceProvider.GetRequiredService<ILogger<IntegrationTests>>();
 
         // Act - Generate enough logs to trigger rolling and archiving
-        for (int i = 0; i < 20; i++)
+        for (var i = 0; i < 20; i++)
         {
-            logger.LogInformation("Integration test message {MessageId} - This is a longer message to trigger file rolling", i);
+            logger.LogInformation(
+                "Integration test message {MessageId} - This is a longer message to trigger file rolling", i);
             logger.LogWarning("Warning message {MessageId} - Additional content for file size", i);
             logger.LogError("Error message {MessageId} - Even more content to ensure rolling happens", i);
         }
@@ -53,17 +67,14 @@ public class IntegrationTests : IDisposable
         var currentFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
         var alternateFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_1.log");
 
-        bool hasCurrentFile = File.Exists(currentFile) || File.Exists(alternateFile);
+        var hasCurrentFile = File.Exists(currentFile) || File.Exists(alternateFile);
         hasCurrentFile.Should().BeTrue();
 
         var archiveDir = Path.Combine(_testDirectory, "archive");
         if (Directory.Exists(archiveDir))
         {
             var archivedFiles = Directory.GetFiles(archiveDir);
-            if (archivedFiles.Any())
-            {
-                archivedFiles.Length.Should().BeLessThanOrEqualTo(3); // Respect retention policy
-            }
+            if (archivedFiles.Any()) archivedFiles.Length.Should().BeLessThanOrEqualTo(3); // Respect retention policy
         }
     }
 
@@ -77,7 +88,8 @@ public class IntegrationTests : IDisposable
         {
             builder.AddAdvanceFileLogger(options =>
             {
-                options.FileNameProvider = (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
+                options.FileNameProvider =
+                    (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
                 options.MaxBytes = 0; // Disable rolling for this test
                 options.AutoFlush = true;
             });
@@ -88,15 +100,16 @@ public class IntegrationTests : IDisposable
 
         // Act - Create concurrent logging tasks
         var tasks = new List<Task>();
-        for (int taskId = 0; taskId < 5; taskId++)
+        for (var taskId = 0; taskId < 5; taskId++)
         {
-            int currentTaskId = taskId;
+            var currentTaskId = taskId;
             tasks.Add(Task.Run(() =>
             {
                 var logger = loggerFactory.CreateLogger($"Task{currentTaskId}");
-                for (int i = 0; i < 50; i++)
+                for (var i = 0; i < 50; i++)
                 {
-                    logger.LogInformation("Concurrent message from Task{TaskId} - Message{MessageId}", currentTaskId, i);
+                    logger.LogInformation("Concurrent message from Task{TaskId} - Message{MessageId}", currentTaskId,
+                        i);
                     Thread.Sleep(1); // Small delay to interleave messages
                 }
             }));
@@ -114,10 +127,7 @@ public class IntegrationTests : IDisposable
         content.Should().NotBeEmpty();
 
         // Verify all tasks wrote messages
-        for (int taskId = 0; taskId < 5; taskId++)
-        {
-            content.Should().Contain($"Task{taskId}");
-        }
+        for (var taskId = 0; taskId < 5; taskId++) content.Should().Contain($"Task{taskId}");
 
         // Count total messages (should be 5 tasks * 50 messages = 250)
         var messageCount = content.Split('\n').Where(line => line.Contains("Concurrent message")).Count();
@@ -134,7 +144,8 @@ public class IntegrationTests : IDisposable
         {
             builder.AddAdvanceFileLogger(options =>
             {
-                options.FileNameProvider = (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
+                options.FileNameProvider = (dt, index) =>
+                    Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
             });
         });
 
@@ -172,7 +183,7 @@ public class IntegrationTests : IDisposable
     }
 
     [Fact]
-    public void ExternalFileAccess_AllowsReadingDuringLogging()
+    public void DevelopmentMode_AllowsReadingDuringLogging()
     {
         // Arrange
         var services = new ServiceCollection();
@@ -181,8 +192,9 @@ public class IntegrationTests : IDisposable
         {
             builder.AddAdvanceFileLogger(options =>
             {
-                options.FileNameProvider = (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
-                options.AllowExternalAccess = true;
+                options.FileNameProvider =
+                    (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
+                options.Mode = LoggerMode.Development;
                 options.AutoFlush = true;
             });
         });
@@ -197,12 +209,11 @@ public class IntegrationTests : IDisposable
         Thread.Sleep(50);
 
         // Try to read the file while logging is active
-        string externalContent = "";
+        var externalContent = "";
         var readException = Record.Exception(() =>
         {
             // Try multiple times as file might be momentarily locked during flush
-            for (int i = 0; i < 5; i++)
-            {
+            for (var i = 0; i < 5; i++)
                 try
                 {
                     using var fileStream = new FileStream(logFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
@@ -215,7 +226,6 @@ public class IntegrationTests : IDisposable
                     if (i < 4) Thread.Sleep(10);
                     else throw;
                 }
-            }
         });
 
         logger.LogInformation("Message after external read");
@@ -241,7 +251,8 @@ public class IntegrationTests : IDisposable
         {
             builder.AddAdvanceFileLogger(options =>
             {
-                options.FileNameProvider = (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
+                options.FileNameProvider =
+                    (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
                 options.MaxBytes = 10 * 1024 * 1024; // 10MB
                 options.AutoFlush = false; // Use buffering for better performance
                 options.BufferSize = 8192;
@@ -253,14 +264,12 @@ public class IntegrationTests : IDisposable
 
         // Act - Log a large number of messages
         var startTime = DateTime.UtcNow;
-        for (int i = 0; i < 10000; i++)
+        for (var i = 0; i < 10000; i++)
         {
-            logger.LogInformation("Performance test message {MessageId} with timestamp {Timestamp}", i, DateTime.UtcNow);
+            logger.LogInformation("Performance test message {MessageId} with timestamp {Timestamp}", i,
+                DateTime.UtcNow);
 
-            if (i % 1000 == 0)
-            {
-                logger.LogWarning("Checkpoint reached: {Checkpoint}", i);
-            }
+            if (i % 1000 == 0) logger.LogWarning("Checkpoint reached: {Checkpoint}", i);
         }
 
         var endTime = DateTime.UtcNow;
@@ -289,7 +298,8 @@ public class IntegrationTests : IDisposable
         {
             builder.AddAdvanceFileLogger(options =>
             {
-                options.FileNameProvider = (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
+                options.FileNameProvider =
+                    (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
                 options.MaxBytes = 0; // Disable rolling
                 options.AutoFlush = true;
             });
@@ -307,10 +317,7 @@ public class IntegrationTests : IDisposable
         // Simulate external file deletion (if possible)
         try
         {
-            if (File.Exists(logFile))
-            {
-                File.Delete(logFile);
-            }
+            if (File.Exists(logFile)) File.Delete(logFile);
         }
         catch
         {
@@ -344,7 +351,8 @@ public class IntegrationTests : IDisposable
         {
             builder.AddAdvanceFileLogger(options =>
             {
-                options.FileNameProvider = (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
+                options.FileNameProvider =
+                    (dt, index) => Path.Combine(_testDirectory, $"app.{dt:yyyy-MM-dd}_{index}.log");
                 options.MaxBytes = 100; // Very small to force frequent rolling
                 options.MaxArchivedFiles = 2; // Keep only 2 archived files
                 options.ArchiveDirectory = "archive";
@@ -356,13 +364,10 @@ public class IntegrationTests : IDisposable
         var logger = serviceProvider.GetRequiredService<ILogger<IntegrationTests>>();
 
         // Act - Generate many messages to create multiple archive files
-        for (int i = 0; i < 100; i++)
+        for (var i = 0; i < 100; i++)
         {
             logger.LogInformation("Retention test message {MessageId} - Content to force rolling behavior", i);
-            if (i % 10 == 0)
-            {
-                Thread.Sleep(10); // Allow file operations to complete
-            }
+            if (i % 10 == 0) Thread.Sleep(10); // Allow file operations to complete
         }
 
         Thread.Sleep(500); // Allow final operations to complete
@@ -379,20 +384,5 @@ public class IntegrationTests : IDisposable
         var today = DateTime.Today;
         var currentFile = Path.Combine(_testDirectory, $"app.{today:yyyy-MM-dd}_0.log");
         File.Exists(currentFile).Should().BeTrue();
-    }
-
-    public void Dispose()
-    {
-        try
-        {
-            if (Directory.Exists(_testDirectory))
-            {
-                Directory.Delete(_testDirectory, true);
-            }
-        }
-        catch
-        {
-            // Ignore cleanup errors
-        }
     }
 }
